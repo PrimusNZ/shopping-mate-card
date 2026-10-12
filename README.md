@@ -11,7 +11,37 @@ Two dashboard cards for Home Assistant that turn a to-do list into a proper fami
 
 ## Table of contents
 
-**[`Intended use`](#intended-use)**  **[`Features`](#features)**  **[`Installation`](#installation)**  **[`Setting up`](#setting-up)**  **[`Configuration`](#configuration)**  **[`Catalog format`](#catalog-format)**  **[`Styling`](#styling)**  **[`Notes`](#notes)**  **[`License`](#license)**
+**[`Screenshots`](#screenshots)**  **[`Intended use`](#intended-use)**  **[`Features`](#features)**  **[`Installation`](#installation)**  **[`Setting up`](#setting-up)**  **[`Configuration`](#configuration)**  **[`Catalog format`](#catalog-format)**  **[`Styling`](#styling)**  **[`Notes`](#notes)**  **[`License`](#license)**
+
+<br>
+
+## Screenshots
+
+**ShoppingMate List Card**
+
+| Tablet or kiosk | Light theme |
+| --- | --- |
+| ![List card on a tablet](assets/list-tablet.png) | ![List card, light theme](assets/list-tablet-light.png) |
+
+| Filtering the catalog | Add New Item |
+| --- | --- |
+| ![Filtering the catalog](assets/list-filter.png) | ![Add New Item dialog](assets/list-dialog.png) |
+
+| Edit an item (long-press) |
+| --- |
+| ![Edit item dialog](assets/list-edit-dialog.png) |
+
+On a phone the list card shows one pane at a time:
+
+| Shopping list tab | Add items tab |
+| --- | --- |
+| <img src="assets/list-phone.png" width="300"> | <img src="assets/list-phone-catalog.png" width="300"> |
+
+**ShoppingMate Calculator Card**
+
+| Pricing items | Ready to start | Light theme |
+| --- | --- | --- |
+| <img src="assets/calc-phone.png" width="260"> | <img src="assets/calc-phone-empty.png" width="260"> | <img src="assets/calc-phone-light.png" width="260"> |
 
 <br>
 
