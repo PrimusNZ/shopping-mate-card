@@ -5,7 +5,7 @@ Two dashboard cards for Home Assistant that turn a to-do list into a proper fami
 - **ShoppingMate List Card** (`custom:shoppingmate-list-card`): the shopping list next to a catalog of everything you usually buy. Tap an item to add it, tap it again for more.
 - **ShoppingMate Calculator Card** (`custom:shoppingmate-calc-card`): an in-store calculator that works through the same list, adds up what you spend and saves each shop to a history calendar.
 
-[![Stars](https://img.shields.io/github/stars/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![Last commit](https://img.shields.io/github/last-commit/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![License](https://img.shields.io/github/license/PrimusNZ/shopping-mate-card?style=for-the-badge)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![Last commit](https://img.shields.io/github/last-commit/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![License](https://img.shields.io/github/license/PrimusNZ/shopping-mate-card?style=for-the-badge)](https://github.com/PrimusNZ/shopping-mate-card/blob/devel/LICENSE)
 
 <br>
 
@@ -21,27 +21,27 @@ Two dashboard cards for Home Assistant that turn a to-do list into a proper fami
 
 | Tablet or kiosk | Light theme |
 | --- | --- |
-| ![List card on a tablet](assets/list-tablet.png) | ![List card, light theme](assets/list-tablet-light.png) |
+| ![List card on a tablet](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-tablet.png) | ![List card, light theme](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-tablet-light.png) |
 
 | Filtering the catalog | Add New Item |
 | --- | --- |
-| ![Filtering the catalog](assets/list-filter.png) | ![Add New Item dialog](assets/list-dialog.png) |
+| ![Filtering the catalog](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-filter.png) | ![Add New Item dialog](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-dialog.png) |
 
 | Edit an item (long-press) |
 | --- |
-| ![Edit item dialog](assets/list-edit-dialog.png) |
+| ![Edit item dialog](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-edit-dialog.png) |
 
 On a phone the list card shows one pane at a time:
 
 | Shopping list tab | Add items tab |
 | --- | --- |
-| <img src="assets/list-phone.png" width="300"> | <img src="assets/list-phone-catalog.png" width="300"> |
+| <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-phone.png" width="300"> | <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-phone-catalog.png" width="300"> |
 
 **ShoppingMate Calculator Card**
 
 | Pricing items | Ready to start | Light theme |
 | --- | --- | --- |
-| <img src="assets/calc-phone.png" width="260"> | <img src="assets/calc-phone-empty.png" width="260"> | <img src="assets/calc-phone-light.png" width="260"> |
+| <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-phone.png" width="260"> | <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-phone-empty.png" width="260"> | <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-phone-light.png" width="260"> |
 
 <br>
 
@@ -256,4 +256,4 @@ The variable names come from the Kiosk dashboard these cards were first built fo
 
 Copyright © 2026 Ryan Davies (PrimusNZ).
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for the full text.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/PrimusNZ/shopping-mate-card/blob/devel/LICENSE) file for the full text.
