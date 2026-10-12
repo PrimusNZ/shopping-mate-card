@@ -3,22 +3,22 @@
  * one dashboard resource, two custom cards that share the shopping list
  * (todo.shopping_list):
  *
- *   custom:shop-list-card  — kiosk / phone shopping list built around a catalog
- *   custom:shop-calc-card  — in-store phone calculator that prices the list
+ *   custom:shopmate-list-card  — kiosk / phone shopping list built around a catalog
+ *   custom:shopmate-calc-card  — in-store phone calculator that prices the list
  *
- * Section 1 is shop-list-card, section 2 is shop-calc-card (each section keeps its
+ * Section 1 is shopmate-list-card, section 2 is shopmate-calc-card (each section keeps its
  * own header comment). Bundled 2026-10-11 from shop-list-card.js and
  * shop-calc-card.js, which were removed. Renamed from shop-cards.js and moved into
- * its own folder 2026-10-12.
+ * its own folder 2026-10-12; the card types were renamed from shop-* to shopmate-* the same day.
  * Both cards have a visual editor in the Home Assistant dashboard editor (built
  * with the static getConfigForm() hook, so it needs no editor element of its own).
  */
 
 /* =====================================================================
- * 1. shop-list-card
+ * 1. shopmate-list-card
  * ===================================================================== */
 /*
- * shop-list-card — shopping list built around a catalog. Built for the kiosk
+ * shopmate-list-card — shopping list built around a catalog. Built for the kiosk
  * Shopping page (replaces the Improved Shopping List Card there) and also works on
  * any other dashboard, including phones.
  *
@@ -74,7 +74,7 @@
  * an old "@Category@ " prefix from the previous card is ignored.
  * Styled with the kiosk tokens (--kiosk-surface, --kiosk-surface-edge,
  * --kiosk-accent, --kiosk-text-*) and falls back to HA theme colours elsewhere.
- * Config: type: custom:shop-list-card
+ * Config: type: custom:shopmate-list-card
  *   entity: todo.shopping_list
  *   catalog_entity: todo.shop_catalog
  *   title: Shopping
@@ -723,15 +723,15 @@ class ShopListCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("shop-list-card")) customElements.define("shop-list-card", ShopListCard);
+if (!customElements.get("shopmate-list-card")) customElements.define("shopmate-list-card", ShopListCard);
 window.customCards = window.customCards || [];
-window.customCards.push({ type: "shop-list-card", name: "Shop List Card", description: "Shopping list with a catalog of categories and items" });
+window.customCards.push({ type: "shopmate-list-card", name: "Shop List Card", description: "Shopping list with a catalog of categories and items" });
 
 /* =====================================================================
- * 2. shop-calc-card
+ * 2. shopmate-calc-card
  * ===================================================================== */
 /*
- * shop-calc-card — Shopping calculator for the in-store phone dashboard.
+ * shopmate-calc-card — Shopping calculator for the in-store phone dashboard.
  * Left: price display, quantity and keypad. Right: an "add item" field and the
  * open shopping-list items, A to Z; tap one to select it, then Add a price for
  * it. Long-press an item to be asked whether to remove it from the shopping list.
@@ -756,7 +756,7 @@ window.customCards.push({ type: "shop-list-card", name: "Shop List Card", descri
  * Added 2026-10-11, restyled same day; history moved from a to-do list to a
  * calendar + spend counter the same day. Item labels drop the Improved Shopping
  * List Card's "@Category@ " prefix and its quantity marker ("Name (2)" / "2× Name").
- * Card config: type: custom:shop-calc-card, entity: todo.shopping_list,
+ * Card config: type: custom:shopmate-calc-card, entity: todo.shopping_list,
  *   calendar_entity: calendar.shop_history,
  *   spend_entity: input_number.shop_spend_total, currency: "$"
  */
@@ -1219,6 +1219,6 @@ class ShopCalcCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("shop-calc-card")) customElements.define("shop-calc-card", ShopCalcCard);
+if (!customElements.get("shopmate-calc-card")) customElements.define("shopmate-calc-card", ShopCalcCard);
 window.customCards = window.customCards || [];
-window.customCards.push({ type: "shop-calc-card", name: "Shop Calculator", description: "Keypad and running total for in-store shopping" });
+window.customCards.push({ type: "shopmate-calc-card", name: "Shop Calculator", description: "Keypad and running total for in-store shopping" });

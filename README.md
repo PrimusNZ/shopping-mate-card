@@ -2,8 +2,8 @@
 
 Two dashboard cards for Home Assistant that turn a to-do list into a proper family shopping system, made for wall tablets and phones. One file gives you:
 
-- **Shop List Card** (`custom:shop-list-card`): the shopping list next to a catalog of everything you usually buy. Tap an item to add it, tap it again for more.
-- **Shop Calculator Card** (`custom:shop-calc-card`): an in-store calculator that works through the same list, adds up what you spend and saves each shop to a history calendar.
+- **Shop List Card** (`custom:shopmate-list-card`): the shopping list next to a catalog of everything you usually buy. Tap an item to add it, tap it again for more.
+- **Shop Calculator Card** (`custom:shopmate-calc-card`): an in-store calculator that works through the same list, adds up what you spend and saves each shop to a history calendar.
 
 [![Stars](https://img.shields.io/github/stars/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![Last commit](https://img.shields.io/github/last-commit/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![License](https://img.shields.io/github/license/PrimusNZ/shopping-mate-card?style=for-the-badge)](LICENSE)
 
@@ -126,14 +126,14 @@ Create these once, then add the cards.
 **4. Add the cards.** Edit your dashboard, choose **Add card** and pick **Shop List Card** or **Shop Calculator**, then fill in the form. Or use YAML:
 
 ```yaml
-type: custom:shop-list-card
+type: custom:shopmate-list-card
 entity: todo.shopping_list
 catalog_entity: todo.shop_catalog
 title: Shopping
 ```
 
 ```yaml
-type: custom:shop-calc-card
+type: custom:shopmate-calc-card
 entity: todo.shopping_list
 calendar_entity: calendar.shop_history
 spend_entity: input_number.shop_spend_total
@@ -152,7 +152,7 @@ The calculator is best on its own phone view (a panel view works well) so it can
 
 | Name | Type | Requirement | Default | Description |
 | --- | --- | --- | --- | --- |
-| `type` | string | **Required** | | `custom:shop-list-card` |
+| `type` | string | **Required** | | `custom:shopmate-list-card` |
 | `entity` | string | Optional | `todo.shopping_list` | The to-do list that holds the shopping list. |
 | `catalog_entity` | string | Optional | `todo.shop_catalog` | The to-do list that holds the catalog. |
 | `title` | string | Optional | `Shopping` | Heading above the shopping list. Hidden on narrow screens, where the tabs take its place. |
@@ -161,7 +161,7 @@ The calculator is best on its own phone view (a panel view works well) so it can
 
 | Name | Type | Requirement | Default | Description |
 | --- | --- | --- | --- | --- |
-| `type` | string | **Required** | | `custom:shop-calc-card` |
+| `type` | string | **Required** | | `custom:shopmate-calc-card` |
 | `entity` | string | Optional | `todo.shopping_list` | The to-do list that holds the shopping list. |
 | `calendar_entity` | string | Optional | `calendar.shop_history` | Calendar that receives one event per finished shop. |
 | `spend_entity` | string | Optional | `input_number.shop_spend_total` | Number helper that the shop total is added to. |
