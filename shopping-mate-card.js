@@ -1,5 +1,5 @@
 /*
- * shopping-mate-card.js — Shopping Mate Card, the shopping card bundle. One file,
+ * shopping-mate-card.js — ShoppingMate Card, the shopping card bundle. One file,
  * one dashboard resource, two custom cards that share the shopping list
  * (todo.shopping_list):
  *

@@ -69,7 +69,7 @@ Both cards have a visual editor in the dashboard editor.
 
 <br>
 
-1. Download this file: [shopping-mate-card.js](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/main/shopping-mate-card.js)
+1. Download this file: [shopping-mate-card.js](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/shopping-mate-card.js)
 2. Add this file to your `<config>/www/shopping-mate-card` folder.
 3. On your dashboard click on the icon at the right top corner then on `Edit dashboard`
 4. Click again on that icon and then click on `Manage resources`
