@@ -725,7 +725,7 @@ class ShopListCard extends HTMLElement {
 
 if (!customElements.get("shopmate-list-card")) customElements.define("shopmate-list-card", ShopListCard);
 window.customCards = window.customCards || [];
-window.customCards.push({ type: "shopmate-list-card", name: "Shop List Card", description: "Shopping list with a catalog of categories and items" });
+window.customCards.push({ type: "shopmate-list-card", name: "ShopMate List Card", description: "Shopping list with a catalog of categories and items" });
 
 /* =====================================================================
  * 2. shopmate-calc-card
@@ -1221,4 +1221,4 @@ class ShopCalcCard extends HTMLElement {
 
 if (!customElements.get("shopmate-calc-card")) customElements.define("shopmate-calc-card", ShopCalcCard);
 window.customCards = window.customCards || [];
-window.customCards.push({ type: "shopmate-calc-card", name: "Shop Calculator", description: "Keypad and running total for in-store shopping" });
+window.customCards.push({ type: "shopmate-calc-card", name: "ShopMate Calculator", description: "Keypad and running total for in-store shopping" });
