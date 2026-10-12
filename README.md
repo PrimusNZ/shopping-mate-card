@@ -2,8 +2,8 @@
 
 Two dashboard cards for Home Assistant that turn a to-do list into a proper family shopping system, made for wall tablets and phones. One file gives you:
 
-- **ShopMate List Card** (`custom:shopmate-list-card`): the shopping list next to a catalog of everything you usually buy. Tap an item to add it, tap it again for more.
-- **ShopMate Calculator Card** (`custom:shopmate-calc-card`): an in-store calculator that works through the same list, adds up what you spend and saves each shop to a history calendar.
+- **ShoppingMate List Card** (`custom:shoppingmate-list-card`): the shopping list next to a catalog of everything you usually buy. Tap an item to add it, tap it again for more.
+- **ShoppingMate Calculator Card** (`custom:shoppingmate-calc-card`): an in-store calculator that works through the same list, adds up what you spend and saves each shop to a history calendar.
 
 [![Stars](https://img.shields.io/github/stars/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![Last commit](https://img.shields.io/github/last-commit/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![License](https://img.shields.io/github/license/PrimusNZ/shopping-mate-card?style=for-the-badge)](LICENSE)
 
@@ -29,7 +29,7 @@ Both cards read and write the same shopping list, so the tablet at home and the 
 
 ## Features
 
-**ShopMate List Card**
+**ShoppingMate List Card**
 
 - Two panes: the shopping list on the left, the catalog on the right. On a narrow screen (a phone) it switches to one pane at a time with two tabs.
 - The header counts what is still to buy, for example "5 items on your shopping list".
@@ -41,7 +41,7 @@ Both cards read and write the same shopping list, so the tablet at home and the 
 - No duplicates: an item exists once in the catalog whatever its category, and adding something already on the list raises its quantity instead of adding a second row.
 - The add and edit dialogs stay open when you tap outside them, so you can tap away to dismiss the on-screen keyboard on a small display. Use Cancel to close.
 
-**ShopMate Calculator Card**
+**ShoppingMate Calculator Card**
 
 - Keypad, quantity control and a running total.
 - The open items from the shopping list, A to Z. Tap one to select it, then **Add** a price. It is ticked off the list and moved to the **In Cart** list.
@@ -60,7 +60,7 @@ Both cards have a visual editor in the dashboard editor.
 **Requirements:**
 
 - Home Assistant with at least one to-do list for the shopping list. The built-in [Local To-do](https://www.home-assistant.io/integrations/local_todo/) integration works well.
-- A second to-do list for the catalog (the ShopMate List Card).
+- A second to-do list for the catalog (the ShoppingMate List Card).
 - For the calculator's history: a calendar that can create events, such as [Local Calendar](https://www.home-assistant.io/integrations/local_calendar/), and an `input_number` helper for the spend counter.
 
 <details>
@@ -77,7 +77,7 @@ Both cards have a visual editor in the dashboard editor.
 6. Copy and paste this: `/local/shopping-mate-card/shopping-mate-card.js?v=1`
 7. Click on `JavaScript Module` then `Create`
 8. Go back and refresh your page
-9. You can now click on `Add card` in the bottom right corner and search for `ShopMate List Card` or `ShopMate Calculator`
+9. You can now click on `Add card` in the bottom right corner and search for `ShoppingMate List Card` or `ShoppingMate Calculator`
 10. After any update of the file you will have to edit `/local/shopping-mate-card/shopping-mate-card.js?v=1` and change the version to any higher number
 
 If it's not working, just try to clear your browser cache.
@@ -98,7 +98,7 @@ This method allows you to get updates directly on the Home Assistant Community S
 4. Click on the blue button below (or add `https://github.com/PrimusNZ/shopping-mate-card` as a custom repository of type `Dashboard`)
 5. Click on "Download"
 6. Go back on your dashboard and click on the icon at the right top corner then on `Edit dashboard`
-7. You can now click on `Add card` in the bottom right corner and search for `ShopMate List Card` or `ShopMate Calculator`
+7. You can now click on `Add card` in the bottom right corner and search for `ShoppingMate List Card` or `ShoppingMate Calculator`
 
 If it's not working, try to clear your browser/app cache (on all your devices if needed).
 
@@ -116,24 +116,24 @@ Create these once, then add the cards.
 
 **1. The shopping list.** Add a Local To-do list called **Shopping List**. Its entity is `todo.shopping_list`.
 
-**2. The catalog (ShopMate List Card).** Add another Local To-do list called **Shop Catalog** (`todo.shop_catalog`). Each item in it is one thing you can buy, written as `Category: Item` or `Category: Item | Size`. See [Catalog format](#catalog-format). You can fill it by hand in the to-do list, or just use **+ Add New Item** in the card and it writes the entries for you.
+**2. The catalog (ShoppingMate List Card).** Add another Local To-do list called **Shop Catalog** (`todo.shop_catalog`). Each item in it is one thing you can buy, written as `Category: Item` or `Category: Item | Size`. See [Catalog format](#catalog-format). You can fill it by hand in the to-do list, or just use **+ Add New Item** in the card and it writes the entries for you.
 
-**3. The history (ShopMate Calculator Card).**
+**3. The history (ShoppingMate Calculator Card).**
 
 - Add a Local Calendar called **Shop History** (`calendar.shop_history`). Each finished shop becomes an event here, with every item, quantity and price in the description.
 - Add a **Number** helper called **Shop Spend Total** (`input_number.shop_spend_total`). Give it a minimum of 0, a maximum high enough for your yearly spending, and a step of 0.01. Finish shop adds each shop total to it. If you want weekly or monthly charts, mirror it with a total-increasing template sensor and use that in a statistics or history graph card.
 
-**4. Add the cards.** Edit your dashboard, choose **Add card** and pick **ShopMate List Card** or **ShopMate Calculator**, then fill in the form. Or use YAML:
+**4. Add the cards.** Edit your dashboard, choose **Add card** and pick **ShoppingMate List Card** or **ShoppingMate Calculator**, then fill in the form. Or use YAML:
 
 ```yaml
-type: custom:shopmate-list-card
+type: custom:shoppingmate-list-card
 entity: todo.shopping_list
 catalog_entity: todo.shop_catalog
 title: Shopping
 ```
 
 ```yaml
-type: custom:shopmate-calc-card
+type: custom:shoppingmate-calc-card
 entity: todo.shopping_list
 calendar_entity: calendar.shop_history
 spend_entity: input_number.shop_spend_total
@@ -148,20 +148,20 @@ The calculator is best on its own phone view (a panel view works well) so it can
 
 ## Configuration
 
-### ShopMate List Card
+### ShoppingMate List Card
 
 | Name | Type | Requirement | Default | Description |
 | --- | --- | --- | --- | --- |
-| `type` | string | **Required** | | `custom:shopmate-list-card` |
+| `type` | string | **Required** | | `custom:shoppingmate-list-card` |
 | `entity` | string | Optional | `todo.shopping_list` | The to-do list that holds the shopping list. |
 | `catalog_entity` | string | Optional | `todo.shop_catalog` | The to-do list that holds the catalog. |
 | `title` | string | Optional | `Shopping` | Heading above the shopping list. Hidden on narrow screens, where the tabs take its place. |
 
-### ShopMate Calculator Card
+### ShoppingMate Calculator Card
 
 | Name | Type | Requirement | Default | Description |
 | --- | --- | --- | --- | --- |
-| `type` | string | **Required** | | `custom:shopmate-calc-card` |
+| `type` | string | **Required** | | `custom:shoppingmate-calc-card` |
 | `entity` | string | Optional | `todo.shopping_list` | The to-do list that holds the shopping list. |
 | `calendar_entity` | string | Optional | `calendar.shop_history` | Calendar that receives one event per finished shop. |
 | `spend_entity` | string | Optional | `input_number.shop_spend_total` | Number helper that the shop total is added to. |
@@ -198,7 +198,7 @@ Gas & Fire: 9KG Gas Bottle
 
 ## Styling
 
-The cards use your Home Assistant theme: `--secondary-background-color` for surfaces, `--primary-color` for accents and `--primary-text-color` / `--secondary-text-color` for text. The ShopMate List Card also reads these optional variables, which you can set with [card-mod](https://github.com/thomasloven/lovelace-card-mod) or a theme:
+The cards use your Home Assistant theme: `--secondary-background-color` for surfaces, `--primary-color` for accents and `--primary-text-color` / `--secondary-text-color` for text. The ShoppingMate List Card also reads these optional variables, which you can set with [card-mod](https://github.com/thomasloven/lovelace-card-mod) or a theme:
 
 | Variable | Used for |
 | --- | --- |
@@ -215,7 +215,7 @@ The variable names come from the Kiosk dashboard these cards were first built fo
 
 ## Notes
 
-- Key presses inside the ShopMate List Card do not bubble out of it, so a wrapping card that treats Space or Enter as a tap will not swallow what you type.
+- Key presses inside the ShoppingMate List Card do not bubble out of it, so a wrapping card that treats Space or Enter as a tap will not swallow what you type.
 - The calculator keeps unfinished prices in the browser (local storage), per device. If you price items on a phone, finish the shop on that phone.
 - Both cards need the Home Assistant to-do services (`todo.get_items`, `todo.add_item`, `todo.update_item`, `todo.remove_item`), which any to-do integration that supports editing provides.
 - Built and tested on Home Assistant with Local To-do and Local Calendar, on a wall tablet and on phones. Other setups may need tweaks.
