@@ -226,10 +226,12 @@ The variable names come from the Kiosk dashboard these cards were first built fo
 
 Copyright © 2026 Ryan Davies (PrimusNZ).
 
-This project is licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
+This project is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International license (CC BY-NC-ND 4.0).
 
-You are free to use, study, modify, and redistribute this project under the terms of the GNU GPL. Redistributed copies and derivative works must comply with the applicable GPL terms and must retain applicable copyright and license notices.
+You are free to share (copy and redistribute) the material in any medium or format, under these terms:
 
-Ryan Davies (PrimusNZ) is the original author of this project. Contributors may identify and hold copyright in their own contributions, but redistribution must not remove or misrepresent the original project's applicable copyright and licensing notices.
+- **Attribution**: you must give appropriate credit, provide a link to the license, and indicate if changes were made.
+- **NonCommercial**: you may not use the material for commercial purposes.
+- **NoDerivatives**: if you remix, transform, or build upon the material, you may not distribute the modified material.
 
-See the [LICENSE](LICENSE) file for the complete GNU General Public License terms.
+See the [LICENSE](LICENSE) file, or [creativecommons.org/licenses/by-nc-nd/4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/), for the full license text.
