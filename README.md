@@ -1,4 +1,4 @@
-# Shopping Mate Card
+# ShoppingMate Card
 
 Two dashboard cards for Home Assistant that turn a to-do list into a proper family shopping system, made for wall tablets and phones. One file gives you:
 
@@ -106,7 +106,7 @@ If it's not working, try to clear your browser/app cache (on all your devices if
 
 <br>
 
-[![Open Shopping Mate Card on Home Assistant Community Store (HACS).](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=PrimusNZ&repository=shopping-mate-card&category=frontend)
+[![Open ShoppingMate Card on Home Assistant Community Store (HACS).](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=PrimusNZ&repository=shopping-mate-card&category=frontend)
 
 <br>
 
