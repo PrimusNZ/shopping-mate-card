@@ -1161,10 +1161,11 @@ class ShopCalcCard extends HTMLElement {
 
   _add() {
     const price = parseFloat(this._input);
-    if (!(price > 0)) return;
-    const label = this._label || "Item";
+    // An item has to be selected first; Add does nothing without one.
+    if (!this._label || !(price > 0)) return;
+    const label = this._label;
     this._entries.push({ label, price, qty: this._qty });
-    if (this._label) this._setDone(this._label, true);
+    this._setDone(this._label, true);
     this._input = "";
     this._prefilled = false;
     this._qty = 1;
@@ -1297,6 +1298,7 @@ class ShopCalcCard extends HTMLElement {
         .actions button { height:56px; padding:0; font-size:18px; border-radius:16px; }
         .clr { background:transparent; border:1px solid var(--edge); color:var(--secondary-text-color); }
         .add { background:var(--acc); color:var(--text-primary-color,#fff); font-weight:700; letter-spacing:.02em; box-shadow:0 4px 14px color-mix(in srgb, var(--acc) 40%, transparent); }
+        .add:disabled { background:var(--soft); color:var(--secondary-text-color); box-shadow:none; opacity:.7; cursor:default; }
 
         .right { position:relative; min-height:360px; }
         .rin { position:absolute; inset:0; display:flex; flex-direction:column; gap:8px; }
@@ -1375,6 +1377,7 @@ class ShopCalcCard extends HTMLElement {
     $("#sum").textContent = this._fmt(this._total());
     $("#count").textContent = this._entries.length + " price" + (this._entries.length === 1 ? "" : "s") + " added";
     $("#finish").disabled = !this._entries.length;
+    $("#add").disabled = !this._label || !(parseFloat(this._input) > 0);
   }
 
   _renderList() {
