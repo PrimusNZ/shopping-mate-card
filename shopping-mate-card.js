@@ -3,7 +3,7 @@
  * one dashboard resource, two custom cards that share the shopping list
  * (todo.shopping_list):
  *
- *   custom:shoppingmate-list-card  — tablet / phone shopping list built around a catalog
+ *   custom:shoppingmate-list-card  — kiosk / phone shopping list built around a catalog
  *   custom:shoppingmate-calc-card  — in-store phone calculator that prices the list
  *
  * Section 1 is shoppingmate-list-card, section 2 is shoppingmate-calc-card (each section keeps its
@@ -18,8 +18,9 @@
  * 1. shoppingmate-list-card
  * ===================================================================== */
 /*
- * shoppingmate-list-card — shopping list built around a catalog. Works on wall
- * tablets, any other dashboard, and phones.
+ * shoppingmate-list-card — shopping list built around a catalog. Built for the kiosk
+ * Shopping page (replaces the Improved Shopping List Card there) and also works on
+ * any other dashboard, including phones.
  *
  * Layout: two panes side by side (list left, catalog right). When the card is
  * narrower than 700px (a phone) it switches to one pane at a time with two tabs on

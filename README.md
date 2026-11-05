@@ -19,7 +19,7 @@ Two dashboard cards for Home Assistant that turn a to-do list into a proper fami
 
 **ShoppingMate List Card**
 
-| Wall tablet | Light theme |
+| Tablet or kiosk | Light theme |
 | --- | --- |
 | ![List card on a tablet](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-tablet.png) | ![List card, light theme](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/list-tablet-light.png) |
 
@@ -55,7 +55,7 @@ The calculator card can also run without the calculator (`calculator: false`): s
 
 The cards are built around one routine:
 
-1. **At home, on a wall tablet.** Keep a catalog of the things you buy, grouped by category (Dairy, Pantry, Laundry and so on). When something runs out, tap it in the catalog and it lands on the shopping list. Anyone in the house can do this in a couple of taps, and items you have never bought before can be added on the spot and saved for next time.
+1. **At home, on a wall tablet or kiosk.** Keep a catalog of the things you buy, grouped by category (Dairy, Pantry, Laundry and so on). When something runs out, tap it in the catalog and it lands on the shopping list. Anyone in the house can do this in a couple of taps, and items you have never bought before can be added on the spot and saved for next time.
 2. **In the shop, on a phone.** Open the calculator on the same list. Pick an item, key in its price and quantity, and it is ticked off the list and added to a running total. The "In Cart" list shows what you have priced so far.
 3. **Afterwards.** Press **Finish shop**. The ticked-off items are cleared from the list. If you turn on **Track spending** (optional), the shop is also saved as an event in a history calendar (every item with its quantity and price, plus the total) and the total is added to a running spend counter you can chart by week or month.
 
@@ -144,7 +144,7 @@ entity: todo.shopping_list
 title: Shopping
 ```
 
-The calculator is best on its own phone view (a panel view works well) so it can fill the screen. The list card fills the height of its container, so give it a panel view or a full-height section as well. On a wall tablet, put the list card in its own page.
+The calculator is best on its own phone view (a panel view works well) so it can fill the screen. The list card fills the height of its container, so give it a panel view or a full-height section as well. On the kiosk, put the list card in its own page.
 
 **Optional: a notification when you finish.** With shop tracking set up, the calculator saves the shop one minute in the future and bumps the spend counter. An automation that triggers when `input_number.shop_spend_total` goes up can read the newest event from `calendar.shop_history` and send you the receipt, for example to a phone or a family chat.
 
