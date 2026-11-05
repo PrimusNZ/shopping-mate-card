@@ -858,7 +858,7 @@ window.customCards.push({ type: "shoppingmate-list-card", name: "ShoppingMate Li
  * calendar + spend counter the same day. Item labels drop the Improved Shopping
  * List Card's "@Category@ " prefix and its quantity marker ("Name (2)" / "2× Name").
  * Card config: type: custom:shoppingmate-calc-card, entity: todo.shopping_list,
- *   currency: "$", and the optional shop tracking:
+ *   currency: "$", and the optional shop tracking: track_spending: true with
  *   calendar_entity: calendar.shop_history, spend_entity: input_number.shop_spend_total
  *   calculator: false  (optional) turns the calculator off: no keypad, prices or history, just
  *   select an item, set the quantity and Add it to the cart (see section 3).
@@ -881,10 +881,15 @@ class ShopCalcCard extends HTMLElement {
     }
     if (this._inner) { this._inner.remove(); this._inner = null; if (this.shadowRoot) this.shadowRoot.innerHTML = ""; }
     this._todo = this._cfg.entity || "todo.shopping_list";
-    // Shop tracking is optional: with no calendar_entity no history event is written, and with no
-    // spend_entity no spend counter is updated. Finish shop then just clears the ticked-off items.
-    this._calendar = this._cfg.calendar_entity || "";
-    this._spend = this._cfg.spend_entity || "";
+    // Shop tracking is optional and only exists with the calculator on. track_spending: true turns it
+    // on (a blank calendar / spend counter falls back to calendar.shop_history and
+    // input_number.shop_spend_total); false turns it off. When track_spending is not set at all, cards
+    // written before this option keep working: tracking is on for whichever entity they name.
+    // Finish shop then writes only what is tracked and always clears the ticked-off items.
+    const legacy = this._cfg.track_spending === undefined;
+    const track = this._cfg.track_spending === true;
+    this._calendar = track ? (this._cfg.calendar_entity || "calendar.shop_history") : (legacy ? this._cfg.calendar_entity || "" : "");
+    this._spend = track ? (this._cfg.spend_entity || "input_number.shop_spend_total") : (legacy ? this._cfg.spend_entity || "" : "");
     this._cur = this._cfg.currency || "$";
     this._catalogEntity = this._cfg.catalog_entity || "todo.shop_catalog";
     // Off by default: Finish shop saves the prices paid back to the catalog entries.
@@ -965,6 +970,7 @@ class ShopCalcCard extends HTMLElement {
       calculator: "Show calculator and prices",
       entity: "Shopping list",
       catalog_entity: "Catalog",
+      track_spending: "Track spending",
       calendar_entity: "History calendar",
       spend_entity: "Spend counter",
       currency: "Currency symbol",
@@ -977,9 +983,19 @@ class ShopCalcCard extends HTMLElement {
         { name: "entity", selector: { entity: { domain: "todo" } } },
         { name: "catalog_entity", selector: { entity: { domain: "todo" } } },
         { name: "update_catalog_prices", selector: { boolean: {} } },
-        { name: "calendar_entity", selector: { entity: { domain: "calendar" } } },
-        { name: "spend_entity", selector: { entity: { domain: "input_number" } } },
         { name: "currency", selector: { text: {} } },
+        { name: "track_spending", selector: { boolean: {} } },
+        // Collapsed until opened: only used when Track spending is on.
+        {
+          type: "expandable",
+          name: "",
+          title: "Spending history",
+          flatten: true,
+          schema: [
+            { name: "calendar_entity", selector: { entity: { domain: "calendar" } } },
+            { name: "spend_entity", selector: { entity: { domain: "input_number" } } },
+          ],
+        },
       ],
       computeLabel: (s) => labels[s.name] || s.name,
       computeHelper: (s) => ({
@@ -987,8 +1003,9 @@ class ShopCalcCard extends HTMLElement {
         title: "Heading shown in the header when the calculator is off.",
         entity: "The to-do list that holds the shopping list.",
         catalog_entity: "Catalog whose saved prices are pre-filled when you pick an item (and whose brands are shown).",
-        calendar_entity: "Optional. Finish shop saves each shop as an event in this calendar. Leave empty to skip.",
-        spend_entity: "Optional. Finish shop adds the shop total to this number. Leave empty to skip.",
+        track_spending: "Needs the calculator. When on, Finish shop saves each shop to the history calendar and adds the total to the spend counter (set both under Spending history). Off by default.",
+        calendar_entity: "Used when Track spending is on (default calendar.shop_history). Each finished shop becomes an event here.",
+        spend_entity: "Used when Track spending is on (default input_number.shop_spend_total). The shop total is added to this number.",
         currency: "Shown before every price, for example $.",
         update_catalog_prices: "When on, Finish shop saves the price paid for each item back to its catalog entry.",
       }[s.name] || ""),
@@ -996,7 +1013,7 @@ class ShopCalcCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { calculator: true, entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", currency: "$" };
+    return { calculator: true, track_spending: false, entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", currency: "$" };
   }
 
   // "@Food@ Coffee (Granulated) (2)" -> { name: "Coffee (Granulated)", qty: 2 }
