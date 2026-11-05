@@ -868,6 +868,9 @@ class ShopCalcCard extends HTMLElement {
     this._cfg = config || {};
     // calculator: false -> the same card without the keypad and prices (see ShopTrolleyCard below).
     if (this._cfg.calculator === false) {
+      if (this._cfg.track_spending === true) {
+        throw new Error("Track spending needs the calculator. Turn Track spending off, or turn the calculator on.");
+      }
       if (this._unsub) { try { this._unsub(); } catch (e) { /* ignore */ } this._unsub = null; }
       if (!this._inner) {
         if (!this.shadowRoot) this.attachShadow({ mode: "open" });
