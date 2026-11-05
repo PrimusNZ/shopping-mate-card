@@ -111,7 +111,7 @@ Create these once, then add the cards.
 
 **2. The catalog (ShoppingMate List Card).** Add another Local To-do list called **Shop Catalog** (`todo.shop_catalog`). Each item in it is one thing you can buy, written as `Category: Item` or `Category: Item | Size`. See [Catalog format](#catalog-format). You can fill it by hand in the to-do list, or just use **+ Add New Item** in the card and it writes the entries for you.
 
-**3. Shop tracking (optional, ShoppingMate Calculator Card).** Skip this step if you don't want a history. Tracking is off by default: Finish shop simply clears the ticked-off items. To turn it on, switch **Track spending** on in the card's settings (or set `track_spending: true`) and fill in the **Spending history** section below it. It only works with the calculator on.
+**3. Shop tracking (optional, ShoppingMate Calculator Card).** Skip this step if you don't want a history. Tracking is off by default: Finish shop simply clears the ticked-off items. To turn it on, switch **Track spending** on in the card's settings (or set `track_spending: true`) and fill in both fields in the **Spending history** section below it. If tracking is on and either is missing, the card shows an error. It only works with the calculator on and is ignored when the calculator is off.
 
 - Add a Local Calendar called **Shop History** (`calendar.shop_history`). Each finished shop becomes an event here, with every item, quantity and price in the description.
 - Add a **Number** helper called **Shop Spend Total** (`input_number.shop_spend_total`). Give it a minimum of 0, a maximum high enough for your yearly spending, and a step of 0.01. Finish shop adds each shop total to it. If you want weekly or monthly charts, mirror it with a total-increasing template sensor and use that in a statistics or history graph card.
@@ -173,8 +173,8 @@ The calculator is best on its own phone view (a panel view works well) so it can
 | `catalog_entity` | string | Optional | `todo.shop_catalog` | The catalog whose saved prices are pre-filled when you pick an item, and whose brands are shown. |
 | `update_catalog_prices` | boolean | Optional | `false` | When `true`, Finish shop saves the last price paid for each item back to its catalog entry (size, brand and UPC are kept). Items not in the catalog are skipped. |
 | `track_spending` | boolean | Optional | `false` | Turns shop tracking on. Needs the calculator. Cards that already name a `calendar_entity` or `spend_entity` and do not set this option keep tracking as before. |
-| `calendar_entity` | string | Optional | `calendar.shop_history` | Used when `track_spending` is on: calendar that receives one event per finished shop. |
-| `spend_entity` | string | Optional | `input_number.shop_spend_total` | Used when `track_spending` is on: number helper that the shop total is added to. |
+| `calendar_entity` | string | Required with `track_spending` | none | Calendar that receives one event per finished shop. There is no default: the card shows an error if tracking is on and this is missing. |
+| `spend_entity` | string | Required with `track_spending` | none | Number helper that the shop total is added to. There is no default: the card shows an error if tracking is on and this is missing. |
 | `currency` | string | Optional | `$` | Symbol shown before prices. |
 
 <br>
