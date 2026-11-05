@@ -43,6 +43,12 @@ On a phone the list card shows one pane at a time:
 | --- | --- | --- |
 | <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-phone.png" width="260"> | <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-phone-empty.png" width="260"> | <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-phone-light.png" width="260"> |
 
+The calculator card can also run without the calculator (`calculator: false`): select an item, set the quantity and press Add to put it in the cart, with no prices.
+
+| Calculator off | Light theme |
+| --- | --- |
+| <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-off-phone.png" width="300"> | <img src="https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/assets/calc-off-phone-light.png" width="300"> |
+
 <br>
 
 ## Intended use
