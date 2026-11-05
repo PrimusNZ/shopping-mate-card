@@ -186,6 +186,8 @@ Category: Item | Size | Price | Brand | UPC
 
 Only `Category` and `Item` are required. Every field after the item is optional and can be left empty (keep the `|` when a later field is filled in).
 
+> **Note:** the UPC field is for tracking purposes only and is not currently implemented anywhere yet.
+
 Examples:
 
 ```text
@@ -200,7 +202,7 @@ Gas & Fire: 9KG Gas Bottle
 - An item with a size or type shows, and goes onto the shopping list, as `Item: Size` (Milk: 2L, Coffee: Sachets). Each size or type is its own item, so you can pick exactly the milk you want.
 - The size or type is free text.
 - Price is a number, shown as `$4.50` beside the item. Brand is free text and is left empty for generic items like Milk. A catalog entry has at most one brand.
-- UPC is digits only. It is stored for later use and not used for anything yet.
+- UPC is digits only. It is for tracking purposes only: it is saved with the entry, but it is not currently implemented anywhere yet (no scanning or lookup), so leaving it empty changes nothing.
 - Entries written the old way (`Category: Item` or `Category: Item | Size`) keep working unchanged.
 - An item name plus its size is unique across the whole catalog, whatever the category, and the match ignores capitals.
 - Shopping list rows are stored as `Name` or `Name (3)`, with the quantity in brackets.
