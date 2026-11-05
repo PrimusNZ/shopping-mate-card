@@ -858,8 +858,8 @@ window.customCards.push({ type: "shoppingmate-list-card", name: "ShoppingMate Li
  * calendar + spend counter the same day. Item labels drop the Improved Shopping
  * List Card's "@Category@ " prefix and its quantity marker ("Name (2)" / "2× Name").
  * Card config: type: custom:shoppingmate-calc-card, entity: todo.shopping_list,
- *   calendar_entity: calendar.shop_history,
- *   spend_entity: input_number.shop_spend_total, currency: "$"
+ *   currency: "$", and the optional shop tracking:
+ *   calendar_entity: calendar.shop_history, spend_entity: input_number.shop_spend_total
  *   calculator: false  (optional) turns the calculator off: no keypad, prices or history, just
  *   select an item, set the quantity and Add it to the cart (see section 3).
  */
@@ -881,8 +881,10 @@ class ShopCalcCard extends HTMLElement {
     }
     if (this._inner) { this._inner.remove(); this._inner = null; if (this.shadowRoot) this.shadowRoot.innerHTML = ""; }
     this._todo = this._cfg.entity || "todo.shopping_list";
-    this._calendar = this._cfg.calendar_entity || "calendar.shop_history";
-    this._spend = this._cfg.spend_entity || "input_number.shop_spend_total";
+    // Shop tracking is optional: with no calendar_entity no history event is written, and with no
+    // spend_entity no spend counter is updated. Finish shop then just clears the ticked-off items.
+    this._calendar = this._cfg.calendar_entity || "";
+    this._spend = this._cfg.spend_entity || "";
     this._cur = this._cfg.currency || "$";
     this._catalogEntity = this._cfg.catalog_entity || "todo.shop_catalog";
     // Off by default: Finish shop saves the prices paid back to the catalog entries.
@@ -985,8 +987,8 @@ class ShopCalcCard extends HTMLElement {
         title: "Heading shown in the header when the calculator is off.",
         entity: "The to-do list that holds the shopping list.",
         catalog_entity: "Catalog whose saved prices are pre-filled when you pick an item (and whose brands are shown).",
-        calendar_entity: "Finish shop saves each shop as an event in this calendar.",
-        spend_entity: "Finish shop adds the shop total to this number.",
+        calendar_entity: "Optional. Finish shop saves each shop as an event in this calendar. Leave empty to skip.",
+        spend_entity: "Optional. Finish shop adds the shop total to this number. Leave empty to skip.",
         currency: "Shown before every price, for example $.",
         update_catalog_prices: "When on, Finish shop saves the price paid for each item back to its catalog entry.",
       }[s.name] || ""),
@@ -994,7 +996,7 @@ class ShopCalcCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { calculator: true, entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", calendar_entity: "calendar.shop_history", spend_entity: "input_number.shop_spend_total", currency: "$" };
+    return { calculator: true, entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", currency: "$" };
   }
 
   // "@Food@ Coffee (Granulated) (2)" -> { name: "Coffee (Granulated)", qty: 2 }
@@ -1174,7 +1176,8 @@ class ShopCalcCard extends HTMLElement {
   async _finish() {
     if (this._busy || !this._entries.length) return;
     const total = this._total();
-    if (!confirm("Finish this shop (" + this._fmt(total) + ") and save it to history?")) return;
+    const tracked = this._calendar || this._spend;
+    if (!confirm("Finish this shop (" + this._fmt(total) + ")" + (tracked ? " and save it to history?" : " and clear the ticked-off items?"))) return;
     this._busy = true;
     // One line per item, prices of the same item combined; sorted A to Z.
     const byName = new Map();
@@ -1191,23 +1194,27 @@ class ShopCalcCard extends HTMLElement {
     // Start a minute from now so the calendar trigger (which fires when an
     // event begins) reliably sees it.
     const start = new Date(Date.now() + 60000);
-    try {
-      await this._hass.callService("calendar", "create_event", {
-        summary: "Shop – " + this._fmt(total),
-        description,
-        start_date_time: this._stampLocal(start),
-        end_date_time: this._stampLocal(new Date(start.getTime() + 30 * 60000)),
-      }, { entity_id: this._calendar });
-    } catch (e) {
-      this._busy = false;
-      alert("Could not save the shop to " + this._calendar + ". Nothing was cleared.");
-      return;
+    if (this._calendar) {
+      try {
+        await this._hass.callService("calendar", "create_event", {
+          summary: "Shop – " + this._fmt(total),
+          description,
+          start_date_time: this._stampLocal(start),
+          end_date_time: this._stampLocal(new Date(start.getTime() + 30 * 60000)),
+        }, { entity_id: this._calendar });
+      } catch (e) {
+        this._busy = false;
+        alert("Could not save the shop to " + this._calendar + ". Nothing was cleared.");
+        return;
+      }
     }
-    try {
-      const st = this._hass.states[this._spend];
-      const prev = st ? parseFloat(st.state) || 0 : 0;
-      await this._hass.callService("input_number", "set_value", { value: Math.round((prev + total) * 100) / 100 }, { entity_id: this._spend });
-    } catch (e) { /* the event is saved; the spend counter can be corrected by hand */ }
+    if (this._spend) {
+      try {
+        const st = this._hass.states[this._spend];
+        const prev = st ? parseFloat(st.state) || 0 : 0;
+        await this._hass.callService("input_number", "set_value", { value: Math.round((prev + total) * 100) / 100 }, { entity_id: this._spend });
+      } catch (e) { /* the event is saved; the spend counter can be corrected by hand */ }
+    }
     if (this._writeBack) await this._writeBackPrices();
     try {
       await this._hass.callService("todo", "remove_completed_items", {}, { entity_id: this._todo });

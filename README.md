@@ -3,7 +3,7 @@
 Two dashboard cards for Home Assistant that turn a to-do list into a proper family shopping system, made for wall tablets and phones. One file gives you:
 
 - **ShoppingMate List Card** (`custom:shoppingmate-list-card`): the shopping list next to a catalog of everything you usually buy. Tap an item to add it, tap it again for more.
-- **ShoppingMate Calculator Card** (`custom:shoppingmate-calc-card`): an in-store calculator that works through the same list, adds up what you spend and saves each shop to a history calendar.
+- **ShoppingMate Calculator Card** (`custom:shoppingmate-calc-card`): an in-store calculator that works through the same list and adds up what you spend. It can optionally save each shop to a history calendar and a spend counter.
 
 [![Stars](https://img.shields.io/github/stars/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![Last commit](https://img.shields.io/github/last-commit/PrimusNZ/shopping-mate-card?style=for-the-badge)](#) [![License](https://img.shields.io/github/license/PrimusNZ/shopping-mate-card?style=for-the-badge)](https://github.com/PrimusNZ/shopping-mate-card/blob/devel/LICENSE)
 
@@ -57,7 +57,7 @@ The cards are built around one routine:
 
 1. **At home, on a wall tablet or kiosk.** Keep a catalog of the things you buy, grouped by category (Dairy, Pantry, Laundry and so on). When something runs out, tap it in the catalog and it lands on the shopping list. Anyone in the house can do this in a couple of taps, and items you have never bought before can be added on the spot and saved for next time.
 2. **In the shop, on a phone.** Open the calculator on the same list. Pick an item, key in its price and quantity, and it is ticked off the list and added to a running total. The "In Cart" list shows what you have priced so far.
-3. **Afterwards.** Press **Finish shop**. The shop is saved as an event in a history calendar (every item with its quantity and price, plus the total), the total is added to a running spend counter you can chart by week or month, and the ticked-off items are cleared from the list.
+3. **Afterwards.** Press **Finish shop**. The ticked-off items are cleared from the list. If you set up shop tracking (optional), the shop is also saved as an event in a history calendar (every item with its quantity and price, plus the total) and the total is added to a running spend counter you can chart by week or month.
 
 Both cards read and write the same shopping list, so the tablet at home and the phone in the shop always agree.
 
@@ -86,7 +86,7 @@ Both cards read and write the same shopping list, so the tablet at home and the 
 - Picking an item pre-fills its saved catalog price; the first digit you type replaces it, and backspace edits it.
 - An "Add item" field for anything you spot in the shop that was not on the list.
 - ✕ on an In Cart line removes that price (and un-ticks the item if it has no other prices).
-- **Finish shop** saves the shop to a calendar and a spend counter, then clears the ticked-off items.
+- **Finish shop** clears the ticked-off items. Optionally it also saves the shop to a calendar and a spend counter.
 - What you have priced so far is kept in the browser until the shop is finished, so a refresh does not lose it.
 
 Both cards have a visual editor in the dashboard editor.
@@ -97,7 +97,7 @@ Both cards have a visual editor in the dashboard editor.
 
 - Home Assistant with at least one to-do list for the shopping list. The built-in [Local To-do](https://www.home-assistant.io/integrations/local_todo/) integration works well.
 - A second to-do list for the catalog (the ShoppingMate List Card).
-- For the calculator's history: a calendar that can create events, such as [Local Calendar](https://www.home-assistant.io/integrations/local_calendar/), and an `input_number` helper for the spend counter.
+- Optional, for the calculator's shop tracking: a calendar that can create events, such as [Local Calendar](https://www.home-assistant.io/integrations/local_calendar/), and an `input_number` helper for the spend counter.
 
 Install **ShoppingMate Card** from the **Marketplace** in Home Assistant (it is listed as a Dashboard card). There is nothing to download or add by hand. Once it is installed, add the cards to a dashboard as described below.
 
@@ -111,7 +111,7 @@ Create these once, then add the cards.
 
 **2. The catalog (ShoppingMate List Card).** Add another Local To-do list called **Shop Catalog** (`todo.shop_catalog`). Each item in it is one thing you can buy, written as `Category: Item` or `Category: Item | Size`. See [Catalog format](#catalog-format). You can fill it by hand in the to-do list, or just use **+ Add New Item** in the card and it writes the entries for you.
 
-**3. The history (ShoppingMate Calculator Card).**
+**3. Shop tracking (optional, ShoppingMate Calculator Card).** Skip this step if you don't want a history. Without `calendar_entity` and `spend_entity` set, Finish shop simply clears the ticked-off items. You can use either one on its own or both.
 
 - Add a Local Calendar called **Shop History** (`calendar.shop_history`). Each finished shop becomes an event here, with every item, quantity and price in the description.
 - Add a **Number** helper called **Shop Spend Total** (`input_number.shop_spend_total`). Give it a minimum of 0, a maximum high enough for your yearly spending, and a step of 0.01. Finish shop adds each shop total to it. If you want weekly or monthly charts, mirror it with a total-increasing template sensor and use that in a statistics or history graph card.
@@ -128,9 +128,10 @@ title: Shopping
 ```yaml
 type: custom:shoppingmate-calc-card
 entity: todo.shopping_list
+currency: "$"
+# Optional shop tracking
 calendar_entity: calendar.shop_history
 spend_entity: input_number.shop_spend_total
-currency: "$"
 ```
 
 To use the same card without the calculator, add `calculator: false`:
@@ -144,7 +145,7 @@ title: Shopping
 
 The calculator is best on its own phone view (a panel view works well) so it can fill the screen. The list card fills the height of its container, so give it a panel view or a full-height section as well. On the kiosk, put the list card in its own page.
 
-**Optional: a notification when you finish.** The calculator saves the shop one minute in the future and bumps the spend counter. An automation that triggers when `input_number.shop_spend_total` goes up can read the newest event from `calendar.shop_history` and send you the receipt, for example to a phone or a family chat.
+**Optional: a notification when you finish.** With shop tracking set up, the calculator saves the shop one minute in the future and bumps the spend counter. An automation that triggers when `input_number.shop_spend_total` goes up can read the newest event from `calendar.shop_history` and send you the receipt, for example to a phone or a family chat.
 
 <br>
 
@@ -170,8 +171,8 @@ The calculator is best on its own phone view (a panel view works well) so it can
 | `title` | string | Optional | `Shopping` | Heading in the header when `calculator` is `false`. |
 | `catalog_entity` | string | Optional | `todo.shop_catalog` | The catalog whose saved prices are pre-filled when you pick an item, and whose brands are shown. |
 | `update_catalog_prices` | boolean | Optional | `false` | When `true`, Finish shop saves the last price paid for each item back to its catalog entry (size, brand and UPC are kept). Items not in the catalog are skipped. |
-| `calendar_entity` | string | Optional | `calendar.shop_history` | Calendar that receives one event per finished shop. |
-| `spend_entity` | string | Optional | `input_number.shop_spend_total` | Number helper that the shop total is added to. |
+| `calendar_entity` | string | Optional | none | Calendar that receives one event per finished shop. When not set, no event is written. |
+| `spend_entity` | string | Optional | none | Number helper that the shop total is added to. When not set, no spend counter is updated. |
 | `currency` | string | Optional | `$` | Symbol shown before prices. |
 
 <br>
