@@ -66,6 +66,7 @@ Both cards read and write the same shopping list, so the tablet at home and the 
 - Tap a list row to tick it off. Use − and + to change the quantity, ✕ to remove it, and **Clear done** to remove everything ticked.
 - The catalog is grouped by category, sorted A to Z, with a live filter that matches category and item names as you type.
 - Items already on the list show how many you have.
+- The header adds an estimated total ("5 items on your shopping list · est. $43.50") from the catalog prices, and says how many items have no price.
 - Long-press a catalog item to rename it, change its size or type, move it to another category, or delete it.
 - **+ Add New Item** adds something new. Type a category (existing ones are suggested as you type, and a new name creates a new category), the item, an optional size or type, a quantity, and whether to keep it in the catalog for next time.
 - No duplicates: an item exists once in the catalog whatever its category, and adding something already on the list raises its quantity instead of adding a second row.
@@ -76,6 +77,7 @@ Both cards read and write the same shopping list, so the tablet at home and the 
 - Keypad, quantity control and a running total.
 - The open items from the shopping list, A to Z. Tap one to select it, then **Add** a price. It is ticked off the list and moved to the **In Cart** list.
 - Long-press an item to be asked whether to remove it from the shopping list.
+- Picking an item pre-fills its saved catalog price; the first digit you type replaces it, and backspace edits it.
 - An "Add item" field for anything you spot in the shop that was not on the list.
 - ✕ on an In Cart line removes that price (and un-ticks the item if it has no other prices).
 - **Finish shop** saves the shop to a calendar and a spend counter, then clears the ticked-off items.
@@ -185,6 +187,7 @@ The calculator is best on its own phone view (a panel view works well) so it can
 | `type` | string | **Required** | | `custom:shoppingmate-list-card` |
 | `entity` | string | Optional | `todo.shopping_list` | The to-do list that holds the shopping list. |
 | `catalog_entity` | string | Optional | `todo.shop_catalog` | The to-do list that holds the catalog. |
+| `currency` | string | Optional | `$` | Symbol shown before the estimated total in the header. |
 | `title` | string | Optional | `Shopping` | Heading above the shopping list. Hidden on narrow screens, where the tabs take its place. |
 
 ### ShoppingMate Calculator Card
@@ -193,6 +196,8 @@ The calculator is best on its own phone view (a panel view works well) so it can
 | --- | --- | --- | --- | --- |
 | `type` | string | **Required** | | `custom:shoppingmate-calc-card` |
 | `entity` | string | Optional | `todo.shopping_list` | The to-do list that holds the shopping list. |
+| `catalog_entity` | string | Optional | `todo.shop_catalog` | The catalog whose saved prices are pre-filled when you pick an item. |
+| `update_catalog_prices` | boolean | Optional | `false` | When `true`, Finish shop saves the last price paid for each item back to its catalog entry (size, brand and UPC are kept). Items not in the catalog are skipped. |
 | `calendar_entity` | string | Optional | `calendar.shop_history` | Calendar that receives one event per finished shop. |
 | `spend_entity` | string | Optional | `input_number.shop_spend_total` | Number helper that the shop total is added to. |
 | `currency` | string | Optional | `$` | Symbol shown before prices. |

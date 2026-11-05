@@ -93,6 +93,8 @@ const SAFE = (s) => String(s || "").replace(/[|]/g, " ").replace(/\s+/g, " ").tr
 // A price is kept as typed ("4.50", "$4.50") but never gets a separator in it; display is tidied.
 const PRICE = (s) => SAFE(s).replace(/[^0-9.,$]/g, "");
 const UPC = (s) => String(s || "").replace(/[^0-9]/g, "");
+// "$4.50" / "4,50" -> 4.5; 0 when there is no usable price.
+const PRICE_NUM = (s) => { const n = parseFloat(String(s || "").replace(/[$,]/g, "")); return n > 0 ? n : 0; };
 // Catalog text: "Category: Item | Size | Price | Brand | UPC". Only Category and Item are
 // required; trailing empty fields are dropped, empty ones in the middle stay as "| |".
 const ENTRY = (cat, f) => {
@@ -109,6 +111,7 @@ class ShopListCard extends HTMLElement {
     this._todo = this._cfg.entity || "todo.shopping_list";
     this._catalogEntity = this._cfg.catalog_entity || "todo.shop_catalog";
     this._title = this._cfg.title || "Shopping";
+    this._cur = this._cfg.currency || "$";
     this._list = [];
     this._catalog = [];
     this._sel = null;
@@ -124,10 +127,30 @@ class ShopListCard extends HTMLElement {
     if (!this._ro && typeof ResizeObserver !== "undefined") this._ro = new ResizeObserver(() => this._measure());
     if (this._ro) this._ro.observe(this);
     this._measure();
+    if (this._hass) this._subscribeItems();
   }
 
   disconnectedCallback() {
     if (this._ro) this._ro.disconnect();
+    if (this._unsub) { try { this._unsub(); } catch (e) { /* ignore */ } this._unsub = null; }
+  }
+
+  // Renaming an item (a quantity change on another device) does not change the entity's state, so
+  // the state stamp never moves. Home Assistant pushes every item change on this subscription.
+  _subscribeItems() {
+    if (this._unsub || this._subbing || !this._hass || !this._hass.connection || !this._hass.connection.subscribeMessage) return;
+    const entity = this._todo;
+    this._subbing = true;
+    this._hass.connection.subscribeMessage((ev) => {
+      if (entity !== this._todo) return;
+      this._list = (ev.items || []).map((i) => ({ uid: i.uid, summary: i.summary, done: i.status === "completed", ...this._clean(i.summary) }));
+      this._renderLeft();
+      this._renderRight();
+    }, { type: "todo/item/subscribe", entity_id: entity }).then((unsub) => {
+      this._subbing = false;
+      if (this.isConnected === false || entity !== this._todo) { try { unsub(); } catch (e) { /* ignore */ } return; }
+      this._unsub = unsub;
+    }).catch(() => { this._subbing = false; });
   }
 
   _measure() {
@@ -143,6 +166,7 @@ class ShopListCard extends HTMLElement {
       this._render();
       this._measure();
     }
+    this._subscribeItems();
     const a = hass.states[this._todo];
     const b = hass.states[this._catalogEntity];
     const sa = a ? a.last_updated : null;
@@ -155,24 +179,26 @@ class ShopListCard extends HTMLElement {
 
   // Visual editor in the dashboard editor (Home Assistant builds the form from this).
   static getConfigForm() {
-    const labels = { title: "Title", entity: "Shopping list", catalog_entity: "Catalog" };
+    const labels = { title: "Title", entity: "Shopping list", catalog_entity: "Catalog", currency: "Currency symbol" };
     return {
       schema: [
         { name: "title", selector: { text: {} } },
         { name: "entity", selector: { entity: { domain: "todo" } } },
         { name: "catalog_entity", selector: { entity: { domain: "todo" } } },
+        { name: "currency", selector: { text: {} } },
       ],
       computeLabel: (s) => labels[s.name] || s.name,
       computeHelper: (s) => ({
+        currency: "Shown before the estimated total, for example $.",
         title: "Heading shown above the shopping list.",
         entity: "The to-do list that holds the shopping list.",
-        catalog_entity: "The to-do list that holds the catalog of items, written \"Category: Item | Size\".",
+        catalog_entity: "The to-do list that holds the catalog of items, written \"Category: Item | Size | Price | Brand | UPC\".",
       }[s.name] || ""),
     };
   }
 
   static getStubConfig() {
-    return { entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", title: "Shopping" };
+    return { entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", title: "Shopping", currency: "$" };
   }
 
   // ---------- data ----------
@@ -231,6 +257,7 @@ class ShopListCard extends HTMLElement {
       if (!this._catalog.some((c) => c.name === this._sel)) this._sel = this._catalog.length ? this._catalog[0].name : null;
     } catch (e) { /* keep what is showing */ }
     this._renderRight();
+    this._renderLeft();
   }
 
   _call(domain, service, data, entity) {
@@ -312,6 +339,9 @@ class ShopListCard extends HTMLElement {
         .row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--surf); box-shadow:var(--edge); cursor:pointer; flex:none; }
         .row .tick { flex:none; width:26px; height:26px; border-radius:50%; border:2px solid var(--txt2); display:flex; align-items:center; justify-content:center; font-size:.7em; color:transparent; }
         .row .name { flex:1; min-width:0; overflow-wrap:anywhere; line-height:1.15; }
+        .row .pr { flex:0 1 auto; max-width:45%; font-size:.85em; color:var(--txt2); text-align:right; white-space:nowrap; line-height:1.15; }
+        .row .pr .each { font-size:.8em; opacity:.8; }
+        .row .brand { font-size:.75em; color:var(--txt2); line-height:1.15; margin-top:2px; }
         .row.done .name { text-decoration:line-through; opacity:.55; }
         .row.done .tick { background:var(--acc); border-color:var(--acc); color:#fff; }
         .qty { flex:none; display:flex; align-items:center; gap:4px; }
@@ -368,6 +398,13 @@ class ShopListCard extends HTMLElement {
         :host(.narrow) .head h2 { display:none; }
         :host(.narrow) .head .n { flex:1; font-size:.8em; }
         :host(.narrow) .dlg { font-size:17px; padding:14px; }
+        :host(.narrow) .row { gap:6px; padding:8px 8px; }
+        :host(.narrow) .row .tick { width:22px; height:22px; }
+        :host(.narrow) .qty { gap:2px; }
+        :host(.narrow) .qty button { width:34px; height:34px; }
+        :host(.narrow) .qty .q { min-width:22px; }
+        :host(.narrow) .x { width:28px; height:28px; }
+        :host(.narrow) .row .name { overflow-wrap:break-word; }
 
         @media (max-height: 600px) {
           .wrap { font-size:15px; gap:8px; }
@@ -430,7 +467,17 @@ class ShopListCard extends HTMLElement {
     if (!box) return;
     const rows = [...this._list].sort((a, b) => (a.done - b.done) || AZ(a.name, b.name));
     const total = rows.reduce((n, r) => n + (r.done ? 0 : r.qty), 0);
-    this.shadowRoot.querySelector("#count").textContent = total ? total + (total === 1 ? " item" : " items") + " on your shopping list" : "";
+    // Estimated total: catalog price x quantity for every unticked row that has a price.
+    let est = 0, unpriced = 0;
+    for (const r of rows) {
+      if (r.done) continue;
+      const found = this._inCatalog(r.name);
+      const price = found ? PRICE_NUM(found.item.price) : 0;
+      if (price) est += price * r.qty; else unpriced += 1;
+    }
+    let text = total ? total + (total === 1 ? " item" : " items") + " on your shopping list" : "";
+    if (total && est > 0) text += " · est. " + this._cur + est.toFixed(2) + (unpriced ? " (" + unpriced + " without a price)" : "");
+    this.shadowRoot.querySelector("#count").textContent = text;
     const tn = this.shadowRoot.querySelector("#tabcount");
     tn.textContent = total;
     tn.style.display = total ? "" : "none";
@@ -441,7 +488,30 @@ class ShopListCard extends HTMLElement {
       const row = document.createElement("div");
       row.className = "row" + (it.done ? " done" : "");
       row.innerHTML = '<span class="tick">✓</span><span class="name"></span>';
-      row.querySelector(".name").textContent = it.name;
+      const nm = row.querySelector(".name");
+      nm.textContent = it.name;
+      // Brand on the line below the product; catalog price beside it ("$6.89", or "2 × $6.89 = $13.78").
+      const found = this._inCatalog(it.name);
+      const unit = found ? PRICE_NUM(found.item.price) : 0;
+      const brand = found ? found.item.brand : "";
+      if (brand) {
+        const b = document.createElement("div");
+        b.className = "brand";
+        b.textContent = brand;
+        nm.appendChild(b);
+      }
+      if (unit) {
+        const pr = document.createElement("span");
+        pr.className = "pr";
+        if (it.qty > 1) {
+          pr.textContent = this._cur + (unit * it.qty).toFixed(2);
+          const each = document.createElement("div");
+          each.className = "each";
+          each.textContent = it.qty + " × " + this._cur + unit.toFixed(2);
+          pr.appendChild(each);
+        } else pr.textContent = this._cur + unit.toFixed(2);
+        row.appendChild(pr);
+      }
       if (!it.done) {
         const q = document.createElement("div");
         q.className = "qty";
@@ -798,6 +868,13 @@ class ShopCalcCard extends HTMLElement {
     this._calendar = this._cfg.calendar_entity || "calendar.shop_history";
     this._spend = this._cfg.spend_entity || "input_number.shop_spend_total";
     this._cur = this._cfg.currency || "$";
+    this._catalogEntity = this._cfg.catalog_entity || "todo.shop_catalog";
+    // Off by default: Finish shop saves the prices paid back to the catalog entries.
+    this._writeBack = this._cfg.update_catalog_prices === true;
+    this._catRows = new Map();
+    this._prices = new Map();
+    this._stampCat = null;
+    this._prefilled = false;
     this._key = "shop_calc_" + this._todo;
     this._entries = [];
     try { this._entries = JSON.parse(localStorage.getItem(this._key) || "[]"); } catch (e) { this._entries = []; }
@@ -816,12 +893,44 @@ class ShopCalcCard extends HTMLElement {
       this.attachShadow({ mode: "open" });
       this._render();
     }
+    this._subscribeItems();
     const st = hass.states[this._todo];
     const stamp = st ? st.last_updated : null;
     if (stamp !== this._stamp) {
       this._stamp = stamp;
       this._loadItems();
     }
+    const cs = hass.states[this._catalogEntity];
+    const cstamp = cs ? cs.last_updated : null;
+    if (cstamp !== this._stampCat) {
+      this._stampCat = cstamp;
+      this._loadPrices();
+    }
+  }
+
+  // Renaming an item (a quantity change on another device) does not change the entity's state, so
+  // the state stamp above never moves. Home Assistant pushes every item change on this subscription.
+  _subscribeItems() {
+    if (this._unsub || this._subbing || !this._hass || !this._hass.connection || !this._hass.connection.subscribeMessage) return;
+    const entity = this._todo;
+    this._subbing = true;
+    this._hass.connection.subscribeMessage((ev) => {
+      if (entity !== this._todo) return;
+      this._all = (ev.items || []).map((i) => ({ uid: i.uid, summary: i.summary, done: i.status === "completed", ...this._clean(i.summary) }));
+      if (this._label && !this._all.some((i) => !i.done && i.name === this._label)) this._label = "";
+      this._renderDisplay();
+      this._renderList();
+    }, { type: "todo/item/subscribe", entity_id: entity }).then((unsub) => {
+      this._subbing = false;
+      if (this.isConnected === false || entity !== this._todo) { try { unsub(); } catch (e) { /* ignore */ } return; }
+      this._unsub = unsub;
+    }).catch(() => { this._subbing = false; });
+  }
+
+  connectedCallback() { if (this._hass) this._subscribeItems(); }
+
+  disconnectedCallback() {
+    if (this._unsub) { try { this._unsub(); } catch (e) { /* ignore */ } this._unsub = null; }
   }
 
   getCardSize() { return 11; }
@@ -830,13 +939,17 @@ class ShopCalcCard extends HTMLElement {
   static getConfigForm() {
     const labels = {
       entity: "Shopping list",
+      catalog_entity: "Catalog",
       calendar_entity: "History calendar",
       spend_entity: "Spend counter",
       currency: "Currency symbol",
+      update_catalog_prices: "Save prices to the catalog",
     };
     return {
       schema: [
         { name: "entity", selector: { entity: { domain: "todo" } } },
+        { name: "catalog_entity", selector: { entity: { domain: "todo" } } },
+        { name: "update_catalog_prices", selector: { boolean: {} } },
         { name: "calendar_entity", selector: { entity: { domain: "calendar" } } },
         { name: "spend_entity", selector: { entity: { domain: "input_number" } } },
         { name: "currency", selector: { text: {} } },
@@ -844,15 +957,17 @@ class ShopCalcCard extends HTMLElement {
       computeLabel: (s) => labels[s.name] || s.name,
       computeHelper: (s) => ({
         entity: "The to-do list that holds the shopping list.",
+        catalog_entity: "Catalog whose saved prices are pre-filled when you pick an item.",
         calendar_entity: "Finish shop saves each shop as an event in this calendar.",
         spend_entity: "Finish shop adds the shop total to this number.",
         currency: "Shown before every price, for example $.",
+        update_catalog_prices: "When on, Finish shop saves the price paid for each item back to its catalog entry.",
       }[s.name] || ""),
     };
   }
 
   static getStubConfig() {
-    return { entity: "todo.shopping_list", calendar_entity: "calendar.shop_history", spend_entity: "input_number.shop_spend_total", currency: "$" };
+    return { entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", calendar_entity: "calendar.shop_history", spend_entity: "input_number.shop_spend_total", currency: "$" };
   }
 
   // "@Food@ Coffee (Granulated) (2)" -> { name: "Coffee (Granulated)", qty: 2 }
@@ -866,6 +981,36 @@ class ShopCalcCard extends HTMLElement {
       if (m) { qty = parseInt(m[2], 10); s = m[1]; }
     }
     return { name: s, qty: qty > 0 ? qty : 1 };
+  }
+
+  // Catalog prices by item label ("Milk: 3L"), from "Category: Item | Size | Price | ...".
+  async _loadPrices() {
+    try {
+      const res = await this._hass.callWS({
+        type: "call_service",
+        domain: "todo",
+        service: "get_items",
+        target: { entity_id: this._catalogEntity },
+        return_response: true,
+      });
+      const map = new Map();
+      const rows = new Map();
+      for (const it of res?.response?.[this._catalogEntity]?.items || []) {
+        const text = String(it.summary || "").trim();
+        const i = text.indexOf(":");
+        const cat = i > 0 ? text.slice(0, i).trim() : "";
+        const rest = i > 0 ? text.slice(i + 1).trim() : text;
+        const [name = "", size = "", price = "", brand = "", upc = ""] = rest.split("|").map((x) => x.trim());
+        if (!name) continue;
+        const key = LABEL(name, size).toLowerCase();
+        const n = PRICE_NUM(price);
+        if (n) map.set(key, n);
+        if (cat) rows.set(key, { uid: it.uid, cat, name, size, price: n, brand, upc });
+      }
+      this._prices = map;
+      this._catRows = rows;
+    } catch (e) { /* keep what we have */ }
+    this._renderList();
   }
 
   async _loadItems() {
@@ -947,6 +1092,10 @@ class ShopCalcCard extends HTMLElement {
   }
 
   _press(k) {
+    // A price pre-filled from the catalog is replaced by the first digit typed;
+    // backspace edits it instead.
+    if (this._prefilled && k !== "<") this._input = "";
+    this._prefilled = false;
     if (k === "<") this._input = this._input.slice(0, -1);
     else if (k === ".") { if (!this._input.includes(".")) this._input += this._input ? "." : "0."; }
     else {
@@ -964,6 +1113,7 @@ class ShopCalcCard extends HTMLElement {
     this._entries.push({ label, price, qty: this._qty });
     if (this._label) this._setDone(this._label, true);
     this._input = "";
+    this._prefilled = false;
     this._qty = 1;
     this._label = "";
     this._save();
@@ -975,6 +1125,23 @@ class ShopCalcCard extends HTMLElement {
   _stampLocal(d) {
     const p = (n) => String(n).padStart(2, "0");
     return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  }
+
+  // Optional (update_catalog_prices: true): save the last price paid for each item that is
+  // in the catalog onto its entry, keeping size, brand and UPC. Items not in the catalog are skipped.
+  async _writeBackPrices() {
+    const last = new Map();
+    for (const e of this._entries) last.set(e.label.toLowerCase(), e.price);
+    for (const [key, price] of last) {
+      const row = this._catRows.get(key);
+      if (!row || Math.round(row.price * 100) === Math.round(price * 100)) continue;
+      try {
+        await this._hass.callService("todo", "update_item", {
+          item: row.uid,
+          rename: ENTRY(row.cat, { name: row.name, size: row.size, price: price.toFixed(2), brand: row.brand, upc: row.upc }),
+        }, { entity_id: this._catalogEntity });
+      } catch (e) { /* the shop is saved; a catalog price can be corrected by hand */ }
+    }
   }
 
   async _finish() {
@@ -1014,6 +1181,7 @@ class ShopCalcCard extends HTMLElement {
       const prev = st ? parseFloat(st.state) || 0 : 0;
       await this._hass.callService("input_number", "set_value", { value: Math.round((prev + total) * 100) / 100 }, { entity_id: this._spend });
     } catch (e) { /* the event is saved; the spend counter can be corrected by hand */ }
+    if (this._writeBack) await this._writeBackPrices();
     try {
       await this._hass.callService("todo", "remove_completed_items", {}, { entity_id: this._todo });
     } catch (e) { /* history is saved; the ticked items can be cleared from the list card */ }
@@ -1071,14 +1239,16 @@ class ShopCalcCard extends HTMLElement {
         .addrow input { flex:1; min-width:0; font:inherit; font-size:16px; padding:0 14px; height:46px; border-radius:14px; border:1px solid var(--edge); background:var(--soft); color:var(--primary-text-color); outline:none; }
         .addrow input:focus { border-color:var(--acc); }
         .addrow button { flex:none; width:46px; height:46px; padding:0; font-size:26px; line-height:1; border-radius:14px; background:var(--acc); color:var(--text-primary-color,#fff); }
-        .list { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:2px; }
+        .list { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:0 2px 2px; }
 
-        .row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:var(--soft); border:1px solid transparent; font-size:16px; cursor:pointer; flex:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
-        .row .tick { flex:none; width:22px; height:22px; border-radius:50%; border:2px solid var(--edge); }
-        .row .name { flex:1; min-width:0; overflow-wrap:anywhere; line-height:1.2; }
-        .row .badge { flex:none; font-size:12px; font-weight:700; padding:2px 7px; border-radius:999px; background:color-mix(in srgb, var(--acc) 28%, transparent); }
-        .row.on { border-color:var(--acc); background:color-mix(in srgb, var(--acc) 22%, var(--soft)); }
-        .row.on .tick { border-color:var(--acc); box-shadow:inset 0 0 0 4px var(--acc); }
+        /* Open items: product, then brand in small grey text (no pills). */
+        .row { display:flex; align-items:center; gap:8px; padding:12px 14px; border-radius:12px; background:var(--soft); border:1px solid var(--edge); font-size:16px; line-height:1.1; cursor:pointer; flex:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+        .row .name { overflow-wrap:anywhere; }
+        .row .name { flex:1; min-width:0; display:flex; flex-direction:column; }
+        .row .pr { font-size:12px; color:var(--secondary-text-color); margin-top:2px; }
+        .row .pv { flex:none; font-size:14px; color:var(--secondary-text-color); }
+        .row .badge { flex:none; font-size:12px; font-weight:700; padding:1px 8px; border-radius:999px; background:color-mix(in srgb, var(--acc) 45%, transparent); }
+        .row.on { border-color:var(--acc); box-shadow:inset 0 0 0 1px var(--acc); background:color-mix(in srgb, var(--acc) 22%, var(--soft)); }
         .muted { color:var(--secondary-text-color); font-size:14px; padding:18px 8px; text-align:center; }
 
         .finish { width:100%; height:56px; margin-top:14px; font-size:18px; font-weight:700; letter-spacing:.03em; border-radius:16px; background:var(--acc); color:var(--text-primary-color,#fff); box-shadow:0 4px 14px color-mix(in srgb, var(--acc) 35%, transparent); }
@@ -1124,7 +1294,7 @@ class ShopCalcCard extends HTMLElement {
     $("#newbtn").addEventListener("click", () => this._newItem());
     $("#new").addEventListener("keydown", (ev) => { if (ev.key === "Enter") this._newItem(); });
     $("#clr").addEventListener("click", () => {
-      if (this._input || this._label) { this._input = ""; this._label = ""; this._renderDisplay(); this._renderList(); return; }
+      if (this._input || this._label) { this._input = ""; this._prefilled = false; this._label = ""; this._renderDisplay(); this._renderList(); return; }
       if (this._entries.length && confirm("Clear all prices? Items stay ticked off.")) { this._entries = []; this._save(); this._renderDisplay(); this._renderList(); }
     });
     this._renderDisplay();
@@ -1161,13 +1331,25 @@ class ShopCalcCard extends HTMLElement {
     for (const item of rows) {
       const row = document.createElement("div");
       row.className = "row" + (this._label === item.name ? " on" : "");
-      const tick = document.createElement("span");
-      tick.className = "tick";
-      row.appendChild(tick);
       const nameEl = document.createElement("span");
       nameEl.className = "name";
       nameEl.textContent = item.name;
       row.appendChild(nameEl);
+      // Brand (when the item has one) on the line below the product; the price goes to the keypad.
+      const info = this._catRows.get(item.name.toLowerCase());
+      if (info && info.brand) {
+        const pr = document.createElement("span");
+        pr.className = "pr";
+        pr.textContent = info.brand;
+        nameEl.appendChild(pr);
+      }
+      const unitPrice = info ? PRICE_NUM(info.price) : 0;
+      if (unitPrice) {
+        const pv = document.createElement("span");
+        pv.className = "pv";
+        pv.textContent = this._fmt(unitPrice);
+        row.appendChild(pv);
+      }
       if (item.qty > 1) {
         const badge = document.createElement("span");
         badge.className = "badge";
@@ -1188,8 +1370,18 @@ class ShopCalcCard extends HTMLElement {
       row.addEventListener("contextmenu", (e) => e.preventDefault());
       row.addEventListener("click", () => {
         if (fired) { fired = false; return; }
-        if (this._label === item.name) { this._label = ""; }
-        else { this._label = item.name; this._qty = item.qty; this._renderDisplay(); }
+        if (this._label === item.name) {
+          this._label = "";
+          if (this._prefilled) { this._input = ""; this._prefilled = false; this._renderDisplay(); }
+        } else {
+          this._label = item.name;
+          this._qty = item.qty;
+          // Pre-fill the saved catalog price, if there is one; otherwise leave the keypad as it is.
+          const saved = this._prices.get(item.name.toLowerCase());
+          if (saved) { this._input = saved.toFixed(2); this._prefilled = true; }
+          else if (this._prefilled) { this._input = ""; this._prefilled = false; }
+          this._renderDisplay();
+        }
         this._renderList();
       });
       box.appendChild(row);
