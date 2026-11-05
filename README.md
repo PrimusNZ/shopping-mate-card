@@ -204,23 +204,27 @@ The calculator is best on its own phone view (a panel view works well) so it can
 Each catalog entry is a single to-do item:
 
 ```text
-Category: Item
-Category: Item | Size or type
+Category: Item | Size | Price | Brand | UPC
 ```
+
+Only `Category` and `Item` are required. Every field after the item is optional and can be left empty (keep the `|` when a later field is filled in).
 
 Examples:
 
 ```text
-Dairy: Milk | 2L
-Dairy: Milk | 3L
+Dairy: Milk | 2L | 4.50
+Dairy: Milk | 3L | 6.20
 Pantry: Coffee | Granulated
-Pantry: Coffee | Sachets
-Pantry: Sugar
+Pantry: Sugar | | 3.20 | Chelsea
+Pantry: Coffee | Sachets | 8.99 | Nescafe | 9300000000000
 Gas & Fire: 9KG Gas Bottle
 ```
 
 - An item with a size or type shows, and goes onto the shopping list, as `Item: Size` (Milk: 2L, Coffee: Sachets). Each size or type is its own item, so you can pick exactly the milk you want.
 - The size or type is free text.
+- Price is a number, shown as `$4.50` beside the item. Brand is free text and is left empty for generic items like Milk. A catalog entry has at most one brand.
+- UPC is digits only. It is stored for later use and not used for anything yet.
+- Entries written the old way (`Category: Item` or `Category: Item | Size`) keep working unchanged.
 - An item name plus its size is unique across the whole catalog, whatever the category, and the match ignores capitals.
 - Shopping list rows are stored as `Name` or `Name (3)`, with the quantity in brackets.
 

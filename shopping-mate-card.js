@@ -40,8 +40,11 @@
  *         Long-press an item to edit it: rename it, change its size / type, move
  *         it to another category, or delete it from the catalog (Delete asks for a
  *         second tap).
- *  Catalog entries are written "Category: Item" or, with a size / type, "Category: Item | Size"
- *         (e.g. "Dairy: Milk | 2L", "Pantry: Coffee | Granulated"). An item with a
+ *  Catalog entries are written "Category: Item | Size | Price | Brand | UPC". Only
+ *         Category and Item are required; the rest are optional and may be left empty
+ *         ("Dairy: Milk | 2L | 4.50", "Pantry: Sugar | | 3.20 | Chelsea"). Price and
+ *         brand show beside the item in the catalog; brand is empty for generic items;
+ *         UPC is stored for later use. An item with a
  *         size / type is shown and put on the shopping list as "Item: Size"
  *         (Milk: 2L, Coffee: Sachets), so each size / type is its own item. The
  *         size / type is freeform text.
@@ -87,6 +90,16 @@ const AZ = (a, b) => String(a).localeCompare(String(b), undefined, { sensitivity
 const LABEL = (name, size) => (size ? name + ": " + size : name);
 // Strip the characters the catalog format uses as separators from user text.
 const SAFE = (s) => String(s || "").replace(/[|]/g, " ").replace(/\s+/g, " ").trim();
+// A price is kept as typed ("4.50", "$4.50") but never gets a separator in it; display is tidied.
+const PRICE = (s) => SAFE(s).replace(/[^0-9.,$]/g, "");
+const UPC = (s) => String(s || "").replace(/[^0-9]/g, "");
+// Catalog text: "Category: Item | Size | Price | Brand | UPC". Only Category and Item are
+// required; trailing empty fields are dropped, empty ones in the middle stay as "| |".
+const ENTRY = (cat, f) => {
+  const parts = [f.name, f.size || "", f.price || "", f.brand || "", f.upc || ""];
+  while (parts.length > 1 && !parts[parts.length - 1]) parts.pop();
+  return cat + ": " + parts.join(" | ").replace(/ {2,}/g, " ");
+};
 // Below this card width the phone layout (tabs, one pane at a time) is used.
 const NARROW_PX = 700;
 
@@ -207,13 +220,11 @@ class ShopListCard extends HTMLElement {
         const i = text.indexOf(":");
         const cat = i > 0 ? text.slice(0, i).trim() : "Other";
         const rest = i > 0 ? text.slice(i + 1).trim() : text;
-        // "Item | Size": the size / type is optional and freeform.
-        const p = rest.indexOf("|");
-        const name = (p >= 0 ? rest.slice(0, p) : rest).trim();
-        const size = p >= 0 ? rest.slice(p + 1).trim() : "";
+        // "Item | Size | Price | Brand | UPC": everything after the item is optional.
+        const [name = "", size = "", price = "", brand = "", upc = ""] = rest.split("|").map((x) => x.trim());
         if (!name) continue;
         if (!map.has(cat)) map.set(cat, []);
-        map.get(cat).push({ name, size, label: LABEL(name, size), uid: it.uid });
+        map.get(cat).push({ name, size, price: PRICE(price), brand, upc: UPC(upc), label: LABEL(name, size), uid: it.uid });
       }
       // Categories A–Z, and the items inside each one A–Z.
       this._catalog = [...map.keys()].sort(AZ).map((c) => ({ name: c, items: map.get(c).sort((a, b) => AZ(a.label, b.label)) }));
@@ -320,6 +331,7 @@ class ShopListCard extends HTMLElement {
         .pills { flex:none; display:flex; flex-wrap:wrap; gap:8px; padding:0 2px 2px; }
         .irow { flex:none; display:flex; align-items:center; gap:8px; padding:10px 18px; border-radius:999px; line-height:1.1; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
         .irow.has { box-shadow:inset 0 0 0 2px var(--acc), var(--edge); }
+        .irow .sub { flex:none; font-size:.7em; color:var(--txt2); }
         .irow .b { flex:none; font-size:.75em; font-weight:700; padding:1px 8px; border-radius:999px; background:color-mix(in srgb, var(--acc) 45%, transparent); }
 
         .overlay { position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); padding:12px; }
@@ -483,6 +495,13 @@ class ShopListCard extends HTMLElement {
         const t = document.createElement("span");
         t.textContent = name;
         b.appendChild(t);
+        const sub = [it.brand, it.price ? (/^\$/.test(it.price) ? it.price : "$" + it.price) : ""].filter(Boolean).join(" · ");
+        if (sub) {
+          const m = document.createElement("small");
+          m.className = "sub";
+          m.textContent = sub;
+          b.appendChild(m);
+        }
         if (have && !have.done) {
           const badge = document.createElement("span");
           badge.className = "b";
@@ -515,12 +534,12 @@ class ShopListCard extends HTMLElement {
 
   // ---------- add / edit item dialog ----------
   _openDialog() {
-    this._dialog = { cat: "", item: "", size: "", qty: 1, keep: true, openedAt: Date.now() };
+    this._dialog = { cat: "", item: "", size: "", price: "", brand: "", upc: "", qty: 1, keep: true, openedAt: Date.now() };
     this._renderDialog();
   }
 
   _openEdit(cat, it) {
-    this._dialog = { edit: true, uid: it.uid, cat, item: it.name, size: it.size || "", qty: 1, keep: true, openedAt: Date.now() };
+    this._dialog = { edit: true, uid: it.uid, cat, item: it.name, size: it.size || "", price: it.price || "", brand: it.brand || "", upc: it.upc || "", qty: 1, keep: true, openedAt: Date.now() };
     this._renderDialog();
   }
 
@@ -545,6 +564,12 @@ class ShopListCard extends HTMLElement {
         <input id="ditem" type="text" placeholder="e.g. Milk" autocomplete="off">
         <label class="cap">Size / Type (optional)</label>
         <input id="dsize" type="text" placeholder="e.g. 2L, Granulated" autocomplete="off">
+        <label class="cap">Price (optional)</label>
+        <input id="dprice" type="text" inputmode="decimal" placeholder="e.g. 4.50" autocomplete="off">
+        <label class="cap">Brand (optional)</label>
+        <input id="dbrand" type="text" placeholder="Leave empty for generic items" autocomplete="off">
+        <label class="cap">UPC (optional)</label>
+        <input id="dupc" type="text" inputmode="numeric" placeholder="Barcode number" autocomplete="off">
         <label class="cap" id="dqlbl">Quantity</label>
         <div class="qrow" id="dqrow"><button id="dm">−</button><span class="q" id="dq"></span><button id="dp">+</button></div>
         <label class="keep" id="dkeeprow"><input id="dkeep" type="checkbox"><span>Keep it for next time<small>Saves it to the catalog so you can order it again in future</small></span></label>
@@ -613,6 +638,9 @@ class ShopListCard extends HTMLElement {
     };
     $("#ditem").value = d.item;
     $("#dsize").value = d.size;
+    $("#dprice").value = d.price;
+    $("#dbrand").value = d.brand;
+    $("#dupc").value = d.upc;
     catIn.value = d.cat;
     keepBox.checked = d.keep;
     catIn.addEventListener("input", sync);
@@ -626,6 +654,9 @@ class ShopListCard extends HTMLElement {
     dok.addEventListener("click", () => {
       d.item = $("#ditem").value;
       d.size = $("#dsize").value;
+      d.price = $("#dprice").value;
+      d.brand = $("#dbrand").value;
+      d.upc = $("#dupc").value;
       d.cat = catIn.value;
       if (d.edit) this._saveEdit($("#derr")); else this._submitDialog($("#derr"));
     });
@@ -663,7 +694,7 @@ class ShopListCard extends HTMLElement {
     const existingCat = this._catalog.find((c) => c.name.toLowerCase() === cat.toLowerCase());
     if (existingCat) cat = existingCat.name;
     try {
-      await this._call("todo", "update_item", { item: d.uid, rename: cat + ": " + name + (size ? " | " + size : "") }, this._catalogEntity);
+      await this._call("todo", "update_item", { item: d.uid, rename: ENTRY(cat, { name, size, price: PRICE(d.price), brand: SAFE(d.brand), upc: UPC(d.upc) }) }, this._catalogEntity);
     } catch (e) {
       errBox.textContent = "Could not save the change.";
       return;
@@ -707,7 +738,7 @@ class ShopListCard extends HTMLElement {
       const existingCat = this._catalog.find((c) => c.name.toLowerCase() === cat.toLowerCase());
       if (existingCat) cat = existingCat.name;
       try {
-        await this._call("todo", "add_item", { item: cat + ": " + name + (size ? " | " + size : "") }, this._catalogEntity);
+        await this._call("todo", "add_item", { item: ENTRY(cat, { name, size, price: PRICE(d.price), brand: SAFE(d.brand), upc: UPC(d.upc) }) }, this._catalogEntity);
       } catch (e) {
         errBox.textContent = "Could not save to the catalog.";
         return;
