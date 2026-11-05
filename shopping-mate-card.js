@@ -858,16 +858,44 @@ window.customCards.push({ type: "shoppingmate-list-card", name: "ShoppingMate Li
  * calendar + spend counter the same day. Item labels drop the Improved Shopping
  * List Card's "@Category@ " prefix and its quantity marker ("Name (2)" / "2× Name").
  * Card config: type: custom:shoppingmate-calc-card, entity: todo.shopping_list,
- *   calendar_entity: calendar.shop_history,
- *   spend_entity: input_number.shop_spend_total, currency: "$"
+ *   currency: "$", and the optional shop tracking: track_spending: true with
+ *   calendar_entity: calendar.shop_history, spend_entity: input_number.shop_spend_total
+ *   calculator: false  (optional) turns the calculator off: no keypad, prices or history, just
+ *   select an item, set the quantity and Add it to the cart (see section 3).
  */
 class ShopCalcCard extends HTMLElement {
   setConfig(config) {
     this._cfg = config || {};
+    // calculator: false -> the same card without the keypad and prices (see ShopTrolleyCard below).
+    if (this._cfg.calculator === false) {
+      if (this._cfg.track_spending === true) {
+        throw new Error("Track spending needs the calculator. Turn Track spending off, or turn the calculator on.");
+      }
+      if (this._unsub) { try { this._unsub(); } catch (e) { /* ignore */ } this._unsub = null; }
+      if (!this._inner) {
+        if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+        this.shadowRoot.innerHTML = "<style>:host { display:block; height:100%; }</style>";
+        this._inner = document.createElement("shoppingmate-shop-card");
+        this.shadowRoot.appendChild(this._inner);
+      }
+      this._inner.setConfig(this._cfg);
+      if (this._hass) this._inner.hass = this._hass;
+      return;
+    }
+    if (this._inner) { this._inner.remove(); this._inner = null; if (this.shadowRoot) this.shadowRoot.innerHTML = ""; }
     this._todo = this._cfg.entity || "todo.shopping_list";
-    this._calendar = this._cfg.calendar_entity || "calendar.shop_history";
-    this._spend = this._cfg.spend_entity || "input_number.shop_spend_total";
-    this._cur = this._cfg.currency || "$";
+    // Shop tracking is optional and only exists with the calculator on. track_spending: true turns it
+    // on and then BOTH calendar_entity and spend_entity must be set, otherwise the card shows an error
+    // (there is no fallback entity). track_spending: false turns it off. When track_spending is not set
+    // at all, cards written before this option keep working: tracking is on for whichever entity they name.
+    // Finish shop then writes only what is tracked and always clears the ticked-off items.
+    const legacy = this._cfg.track_spending === undefined;
+    if (this._cfg.track_spending === true && (!this._cfg.calendar_entity || !this._cfg.spend_entity)) {
+      throw new Error("Track spending is on, so set both the history calendar (calendar_entity) and the spend counter (spend_entity).");
+    }
+    const track = this._cfg.track_spending === true;
+    this._calendar = track || legacy ? this._cfg.calendar_entity || "" : "";
+    this._spend = track || legacy ? this._cfg.spend_entity || "" : "";
     this._catalogEntity = this._cfg.catalog_entity || "todo.shop_catalog";
     // Off by default: Finish shop saves the prices paid back to the catalog entries.
     this._writeBack = this._cfg.update_catalog_prices === true;
@@ -885,12 +913,17 @@ class ShopCalcCard extends HTMLElement {
     this._stamp = null;
     this._busy = false;
     if (this.shadowRoot) this._render();
+    // A new config (e.g. the calculator option switched back on) reloads the lists straight away.
+    if (this._hass) this.hass = this._hass;
   }
 
   set hass(hass) {
     this._hass = hass;
+    if (this._inner) { this._inner.hass = hass; return; }
     if (!this.shadowRoot) {
       this.attachShadow({ mode: "open" });
+      this._render();
+    } else if (!this.shadowRoot.querySelector("ha-card")) {
       this._render();
     }
     this._subscribeItems();
@@ -927,19 +960,22 @@ class ShopCalcCard extends HTMLElement {
     }).catch(() => { this._subbing = false; });
   }
 
-  connectedCallback() { if (this._hass) this._subscribeItems(); }
+  connectedCallback() { if (this._hass && !this._inner) this._subscribeItems(); }
 
   disconnectedCallback() {
     if (this._unsub) { try { this._unsub(); } catch (e) { /* ignore */ } this._unsub = null; }
   }
 
-  getCardSize() { return 11; }
+  getCardSize() { return this._inner ? 9 : 11; }
 
   // Visual editor in the dashboard editor (Home Assistant builds the form from this).
   static getConfigForm() {
     const labels = {
+      title: "Title",
+      calculator: "Show calculator and prices",
       entity: "Shopping list",
       catalog_entity: "Catalog",
+      track_spending: "Track spending",
       calendar_entity: "History calendar",
       spend_entity: "Spend counter",
       currency: "Currency symbol",
@@ -947,19 +983,36 @@ class ShopCalcCard extends HTMLElement {
     };
     return {
       schema: [
+        { name: "calculator", default: true, selector: { boolean: {} } },
+        { name: "title", selector: { text: {} } },
         { name: "entity", selector: { entity: { domain: "todo" } } },
         { name: "catalog_entity", selector: { entity: { domain: "todo" } } },
         { name: "update_catalog_prices", selector: { boolean: {} } },
-        { name: "calendar_entity", selector: { entity: { domain: "calendar" } } },
-        { name: "spend_entity", selector: { entity: { domain: "input_number" } } },
         { name: "currency", selector: { text: {} } },
+        // Tracking needs the calculator, so the editor hides these while the calculator is off.
+        { name: "track_spending", visible: { field: "calculator", value: true }, selector: { boolean: {} } },
+        // Collapsed until opened: only used when Track spending is on.
+        {
+          type: "expandable",
+          name: "",
+          title: "Spending history",
+          flatten: true,
+          visible: { field: "calculator", value: true },
+          schema: [
+            { name: "calendar_entity", visible: { field: "calculator", value: true }, selector: { entity: { domain: "calendar" } } },
+            { name: "spend_entity", visible: { field: "calculator", value: true }, selector: { entity: { domain: "input_number" } } },
+          ],
+        },
       ],
       computeLabel: (s) => labels[s.name] || s.name,
       computeHelper: (s) => ({
+        calculator: "On (default): keypad, prices, running total and history. Off: select an item, set the quantity and add it to the cart, with no prices.",
+        title: "Heading shown in the header when the calculator is off.",
         entity: "The to-do list that holds the shopping list.",
-        catalog_entity: "Catalog whose saved prices are pre-filled when you pick an item.",
-        calendar_entity: "Finish shop saves each shop as an event in this calendar.",
-        spend_entity: "Finish shop adds the shop total to this number.",
+        catalog_entity: "Catalog whose saved prices are pre-filled when you pick an item (and whose brands are shown).",
+        track_spending: "Needs the calculator (ignored when it is off). When on, Finish shop saves each shop to the history calendar and adds the total to the spend counter, and both must be set under Spending history. Off by default.",
+        calendar_entity: "Required when Track spending is on. Each finished shop becomes an event here.",
+        spend_entity: "Required when Track spending is on. The shop total is added to this number.",
         currency: "Shown before every price, for example $.",
         update_catalog_prices: "When on, Finish shop saves the price paid for each item back to its catalog entry.",
       }[s.name] || ""),
@@ -967,7 +1020,7 @@ class ShopCalcCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", calendar_entity: "calendar.shop_history", spend_entity: "input_number.shop_spend_total", currency: "$" };
+    return { calculator: true, track_spending: false, entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog", currency: "$" };
   }
 
   // "@Food@ Coffee (Granulated) (2)" -> { name: "Coffee (Granulated)", qty: 2 }
@@ -1147,7 +1200,15 @@ class ShopCalcCard extends HTMLElement {
   async _finish() {
     if (this._busy || !this._entries.length) return;
     const total = this._total();
-    if (!confirm("Finish this shop (" + this._fmt(total) + ") and save it to history?")) return;
+    const tracked = this._calendar || this._spend;
+    if (!confirm("Finish this shop (" + this._fmt(total) + ")" + (tracked ? " and save it to history?" : " and clear the ticked-off items?"))) return;
+    // Tracked entities must exist before anything is written, so a mistyped one cannot half-save a shop.
+    for (const id of [this._calendar, this._spend]) {
+      if (id && !this._hass.states[id]) {
+        alert("Could not find " + id + ". Nothing was cleared.");
+        return;
+      }
+    }
     this._busy = true;
     // One line per item, prices of the same item combined; sorted A to Z.
     const byName = new Map();
@@ -1164,23 +1225,27 @@ class ShopCalcCard extends HTMLElement {
     // Start a minute from now so the calendar trigger (which fires when an
     // event begins) reliably sees it.
     const start = new Date(Date.now() + 60000);
-    try {
-      await this._hass.callService("calendar", "create_event", {
-        summary: "Shop – " + this._fmt(total),
-        description,
-        start_date_time: this._stampLocal(start),
-        end_date_time: this._stampLocal(new Date(start.getTime() + 30 * 60000)),
-      }, { entity_id: this._calendar });
-    } catch (e) {
-      this._busy = false;
-      alert("Could not save the shop to " + this._calendar + ". Nothing was cleared.");
-      return;
+    if (this._calendar) {
+      try {
+        await this._hass.callService("calendar", "create_event", {
+          summary: "Shop – " + this._fmt(total),
+          description,
+          start_date_time: this._stampLocal(start),
+          end_date_time: this._stampLocal(new Date(start.getTime() + 30 * 60000)),
+        }, { entity_id: this._calendar });
+      } catch (e) {
+        this._busy = false;
+        alert("Could not save the shop to " + this._calendar + ". Nothing was cleared.");
+        return;
+      }
     }
-    try {
-      const st = this._hass.states[this._spend];
-      const prev = st ? parseFloat(st.state) || 0 : 0;
-      await this._hass.callService("input_number", "set_value", { value: Math.round((prev + total) * 100) / 100 }, { entity_id: this._spend });
-    } catch (e) { /* the event is saved; the spend counter can be corrected by hand */ }
+    if (this._spend) {
+      try {
+        const st = this._hass.states[this._spend];
+        const prev = st ? parseFloat(st.state) || 0 : 0;
+        await this._hass.callService("input_number", "set_value", { value: Math.round((prev + total) * 100) / 100 }, { entity_id: this._spend });
+      } catch (e) { /* the event is saved; the spend counter can be corrected by hand */ }
+    }
     if (this._writeBack) await this._writeBackPrices();
     try {
       await this._hass.callService("todo", "remove_completed_items", {}, { entity_id: this._todo });
@@ -1445,3 +1510,461 @@ class ShopCalcCard extends HTMLElement {
 if (!customElements.get("shoppingmate-calc-card")) customElements.define("shoppingmate-calc-card", ShopCalcCard);
 window.customCards = window.customCards || [];
 window.customCards.push({ type: "shoppingmate-calc-card", name: "ShoppingMate Calculator", description: "Keypad and running total for in-store shopping" });
+
+/* =====================================================================
+ * 3. shoppingmate-shop-card
+ * ===================================================================== */
+/*
+ * shoppingmate-shop-card — the in-store shopping list without the calculator. It is what
+ * shoppingmate-calc-card shows when its "calculator" option is off (so it is not offered in the
+ * card picker on its own). It works like shoppingmate-calc-card, minus the keypad and prices. Right: an "add item" field and the open
+ * shopping-list items, A to Z, product first with its brand (from the catalog) under it and a ×qty
+ * badge; tap one to select it. Left: a quantity stepper (it takes the selected item's quantity,
+ * change it if it differs) and an Add button. Add puts the selected item in the cart
+ * (todo.update_item -> completed, renamed first when the quantity was changed) and it moves to the
+ * "In Cart" list below, where ✕ puts it back. Long-press an open item to be asked whether to remove it
+ * from the shopping list. The "Add item" field adds a new item with the current quantity and selects
+ * it. "Finish shop" removes the carted items from the shopping list (todo.remove_completed_items).
+ * Nothing is kept in the browser: the cart is the ticked state of the shopping list itself, so it is
+ * shared by every device and updates live.
+ * Config (given on the calc card): calculator: false, entity: todo.shopping_list,
+ *   catalog_entity: todo.shop_catalog, title: Shopping
+ */
+class ShopTrolleyCard extends HTMLElement {
+  setConfig(config) {
+    this._cfg = config || {};
+    this._todo = this._cfg.entity || "todo.shopping_list";
+    this._catalogEntity = this._cfg.catalog_entity || "todo.shop_catalog";
+    this._title = this._cfg.title || "";
+    this._brands = new Map();
+    this._all = [];
+    this._stamp = null;
+    this._stampCat = null;
+    this._busy = false;
+    this._qty = 1;
+    this._label = "";
+    if (this.shadowRoot) this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+      this._render();
+    }
+    this._subscribeItems();
+    const st = hass.states[this._todo];
+    const stamp = st ? st.last_updated : null;
+    if (stamp !== this._stamp) { this._stamp = stamp; this._loadItems(); }
+    const cs = hass.states[this._catalogEntity];
+    const cstamp = cs ? cs.last_updated : null;
+    if (cstamp !== this._stampCat) { this._stampCat = cstamp; this._loadBrands(); }
+  }
+
+  // A quantity change renames an item and leaves the entity's state alone, so the state stamp never
+  // moves; Home Assistant pushes every item change on this subscription instead.
+  _subscribeItems() {
+    if (this._unsub || this._subbing || !this._hass || !this._hass.connection || !this._hass.connection.subscribeMessage) return;
+    const entity = this._todo;
+    this._subbing = true;
+    this._hass.connection.subscribeMessage((ev) => {
+      if (entity !== this._todo) return;
+      this._setItems(ev.items || []);
+    }, { type: "todo/item/subscribe", entity_id: entity }).then((unsub) => {
+      this._subbing = false;
+      if (this.isConnected === false || entity !== this._todo) { try { unsub(); } catch (e) { /* ignore */ } return; }
+      this._unsub = unsub;
+    }).catch(() => { this._subbing = false; });
+  }
+
+  connectedCallback() { if (this._hass) this._subscribeItems(); }
+
+  disconnectedCallback() {
+    if (this._unsub) { try { this._unsub(); } catch (e) { /* ignore */ } this._unsub = null; }
+  }
+
+  getCardSize() { return 9; }
+
+  // Visual editor in the dashboard editor (Home Assistant builds the form from this).
+  static getConfigForm() {
+    const labels = { title: "Title", entity: "Shopping list", catalog_entity: "Catalog" };
+    return {
+      schema: [
+        { name: "title", selector: { text: {} } },
+        { name: "entity", selector: { entity: { domain: "todo" } } },
+        { name: "catalog_entity", selector: { entity: { domain: "todo" } } },
+      ],
+      computeLabel: (s) => labels[s.name] || s.name,
+      computeHelper: (s) => ({
+        title: "Optional heading shown above the list.",
+        entity: "The to-do list that holds the shopping list.",
+        catalog_entity: "The catalog, used to show each item's brand.",
+      }[s.name] || ""),
+    };
+  }
+
+  static getStubConfig() {
+    return { entity: "todo.shopping_list", catalog_entity: "todo.shop_catalog" };
+  }
+
+  // "@Food@ Coffee (Granulated) (2)" -> { name: "Coffee (Granulated)", qty: 2 }
+  _clean(summary) {
+    let s = String(summary || "").replace(/^@[^@]*@\s*/, "").trim();
+    let qty = 1;
+    let m = s.match(/^(\d+)\s*[×x]\s+(.*)$/i);
+    if (m) { qty = parseInt(m[1], 10); s = m[2]; }
+    else {
+      m = s.match(/^(.*\S)\s+\((\d+)\)$/);
+      if (m) { qty = parseInt(m[2], 10); s = m[1]; }
+    }
+    return { name: s, qty: qty > 0 ? qty : 1 };
+  }
+
+  _setItems(items) {
+    this._all = items.map((i) => ({ uid: i.uid, summary: i.summary, done: i.status === "completed", ...this._clean(i.summary) }));
+    // Drop the selection when its item is gone or already in the cart (e.g. changed on another device).
+    if (this._label && !this._all.some((i) => !i.done && i.name === this._label)) this._label = "";
+    this._renderDisplay();
+    this._renderList();
+  }
+
+  async _get(entity) {
+    const res = await this._hass.callWS({
+      type: "call_service",
+      domain: "todo",
+      service: "get_items",
+      target: { entity_id: entity },
+      return_response: true,
+    });
+    return res?.response?.[entity]?.items || [];
+  }
+
+  async _loadItems() {
+    try { this._setItems(await this._get(this._todo)); } catch (e) { this._all = []; this._renderList(); }
+  }
+
+  // Brand by item label ("Milk: 3L"), from "Category: Item | Size | Price | Brand | UPC".
+  async _loadBrands() {
+    try {
+      const map = new Map();
+      for (const it of await this._get(this._catalogEntity)) {
+        const text = String(it.summary || "").trim();
+        const i = text.indexOf(":");
+        const rest = i > 0 ? text.slice(i + 1).trim() : text;
+        const [name = "", size = "", , brand = ""] = rest.split("|").map((x) => x.trim());
+        if (name && brand) map.set(LABEL(name, size).toLowerCase(), brand);
+      }
+      this._brands = map;
+    } catch (e) { /* keep what we have */ }
+    this._renderList();
+  }
+
+  _call(service, data) {
+    return this._hass.callService("todo", service, data, { entity_id: this._todo });
+  }
+
+  _summary(name, qty) { return qty > 1 ? name + " (" + qty + ")" : name; }
+
+  // Add: the selected item goes into the cart, with the quantity shown on the stepper.
+  async _add() {
+    const item = this._all.find((i) => !i.done && i.name === this._label);
+    if (!item) return;
+    const qty = this._qty;
+    const data = { item: item.uid || item.summary, status: "completed" };
+    if (qty !== item.qty) data.rename = this._summary(item.name, qty);
+    item.qty = qty;
+    item.done = true;
+    this._label = "";
+    this._qty = 1;
+    this._renderDisplay();
+    this._renderList();
+    try { await this._call("update_item", data); } catch (e) { /* the live feed restores the real state */ }
+  }
+
+  // ✕ on a cart line: back onto the open list.
+  async _putBack(item) {
+    item.done = false;
+    this._renderList();
+    try { await this._call("update_item", { item: item.uid || item.summary, status: "needs_action" }); } catch (e) { /* the live feed restores the real state */ }
+  }
+
+  // Long press on an open item: ask, then remove it from the shopping list.
+  async _removeItem(item) {
+    if (!confirm("Remove " + item.name + " from the shopping list?")) return;
+    try {
+      await this._call("remove_item", { item: [item.uid || item.summary] });
+    } catch (e) {
+      alert("Could not remove " + item.name + " from the shopping list.");
+      return;
+    }
+    this._all = this._all.filter((i) => i !== item);
+    if (this._label === item.name) this._label = "";
+    this._renderDisplay();
+    this._renderList();
+  }
+
+  // Add a new item to the shopping list with the current quantity and select it.
+  async _newItem() {
+    const field = this.shadowRoot.querySelector("#new");
+    const name = (field.value || "").trim().replace(/\s+/g, " ");
+    if (!name) return;
+    field.value = "";
+    const existing = this._all.find((i) => !i.done && i.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      this._label = existing.name;
+      this._qty = existing.qty;
+    } else {
+      const qty = this._qty;
+      const summary = this._summary(name, qty);
+      // Show it straight away; the live feed replaces it with the real row.
+      this._all.push({ uid: null, summary, done: false, name, qty });
+      this._label = name;
+      try {
+        await this._call("add_item", { item: summary });
+      } catch (e) {
+        this._all = this._all.filter((i) => i.summary !== summary || i.uid);
+        this._label = "";
+        alert("Could not add " + name + " to the shopping list.");
+      }
+    }
+    this._renderDisplay();
+    this._renderList();
+  }
+
+  async _finish() {
+    const n = this._all.filter((i) => i.done).length;
+    if (this._busy || !n) return;
+    if (!confirm("Finish this shop and remove the " + n + " item" + (n === 1 ? "" : "s") + " in the cart from the shopping list?")) return;
+    this._busy = true;
+    try {
+      await this._call("remove_completed_items", {});
+      this._all = this._all.filter((i) => !i.done);
+    } catch (e) {
+      alert("Could not clear the cart.");
+    }
+    this._busy = false;
+    this._renderList();
+  }
+
+  _render() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host { display:block; height:100%; }
+        * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        ha-card { display:block; height:100%; overflow-y:auto; border-radius:0; padding:14px; color:var(--primary-text-color); --acc:var(--primary-color); --soft:var(--secondary-background-color); --edge:var(--divider-color); }
+        button { font:inherit; border:none; cursor:pointer; color:var(--primary-text-color); transition:transform .08s, filter .15s; }
+        button:active { transform:scale(.96); filter:brightness(1.25); }
+
+        .hero { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; margin-bottom:12px; border-radius:18px;
+          background:linear-gradient(135deg, color-mix(in srgb, var(--acc) 38%, transparent), color-mix(in srgb, var(--acc) 8%, transparent));
+          border:1px solid color-mix(in srgb, var(--acc) 45%, transparent); }
+        .hero .label { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--secondary-text-color); }
+        .hero .count { font-size:14px; margin-top:2px; color:var(--secondary-text-color); }
+        .hero .sum { font-size:38px; font-weight:700; letter-spacing:-.02em; line-height:1; }
+
+        .cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; align-items:stretch; }
+
+        .sel { padding:12px 14px; margin-bottom:8px; min-height:60px; border-radius:16px; background:var(--soft); border:1px solid var(--edge); }
+        .sel .cap { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--secondary-text-color); }
+        .sel .val { margin-top:4px; font-size:18px; font-weight:600; overflow-wrap:anywhere; line-height:1.15; }
+        .sel .val.empty { opacity:.35; font-weight:400; }
+
+        .qty { display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 6px; margin-bottom:10px; border-radius:20px; background:var(--soft); border:1px solid var(--edge); }
+        .qty .cap { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--secondary-text-color); }
+        .qty .ctl { display:flex; align-items:center; gap:4px; }
+        .qty .n { min-width:46px; text-align:center; font-size:28px; font-weight:700; }
+        .qty button { width:48px; height:48px; padding:0; border-radius:50%; font-size:26px; line-height:1; background:color-mix(in srgb, var(--acc) 22%, transparent); }
+
+        .actions { display:grid; grid-template-columns:1fr 2fr; gap:8px; }
+        .actions button { height:56px; padding:0; font-size:18px; border-radius:16px; }
+        .clr { background:transparent; border:1px solid var(--edge); color:var(--secondary-text-color); }
+        .add { background:var(--acc); color:var(--text-primary-color,#fff); font-weight:700; letter-spacing:.02em; box-shadow:0 4px 14px color-mix(in srgb, var(--acc) 40%, transparent); }
+        .add:disabled { background:var(--soft); color:var(--secondary-text-color); box-shadow:none; opacity:.7; cursor:default; }
+
+        .right { position:relative; min-height:460px; }
+        .rin { position:absolute; inset:0; display:flex; flex-direction:column; gap:8px; }
+        .addrow { display:flex; gap:8px; flex:none; }
+        .addrow input { flex:1; min-width:0; font:inherit; font-size:16px; padding:0 14px; height:46px; border-radius:14px; border:1px solid var(--edge); background:var(--soft); color:var(--primary-text-color); outline:none; }
+        .addrow input:focus { border-color:var(--acc); }
+        .addrow button { flex:none; width:46px; height:46px; padding:0; font-size:26px; line-height:1; border-radius:14px; background:var(--acc); color:var(--text-primary-color,#fff); }
+        .list { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:0 2px 2px; }
+
+        .row { display:flex; align-items:center; gap:8px; padding:12px 14px; border-radius:12px; background:var(--soft); border:1px solid var(--edge); font-size:16px; line-height:1.1; cursor:pointer; flex:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+        .row .name { flex:1; min-width:0; overflow-wrap:break-word; display:flex; flex-direction:column; }
+        .row .brand { font-size:12px; color:var(--secondary-text-color); margin-top:2px; }
+        .row .badge { flex:none; font-size:12px; font-weight:700; padding:1px 8px; border-radius:999px; background:color-mix(in srgb, var(--acc) 45%, transparent); }
+        .row.on { border-color:var(--acc); box-shadow:inset 0 0 0 1px var(--acc); background:color-mix(in srgb, var(--acc) 22%, var(--soft)); }
+        .muted { color:var(--secondary-text-color); font-size:14px; padding:18px 8px; text-align:center; }
+
+        .finish { width:100%; height:56px; margin-top:14px; font-size:18px; font-weight:700; letter-spacing:.03em; border-radius:16px; background:var(--acc); color:var(--text-primary-color,#fff); box-shadow:0 4px 14px color-mix(in srgb, var(--acc) 35%, transparent); }
+        .finish:disabled { background:var(--soft); color:var(--secondary-text-color); box-shadow:none; opacity:.7; cursor:default; }
+
+        .cart { margin-top:16px; }
+        .cart .head { display:flex; justify-content:space-between; align-items:baseline; margin:0 4px 8px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--secondary-text-color); }
+        .cart .plist { display:flex; flex-direction:column; gap:6px; }
+        .pline { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:var(--soft); border:1px solid var(--edge); }
+        .pline .tick { flex:none; width:22px; height:22px; border-radius:50%; background:var(--acc); color:var(--text-primary-color,#fff); display:flex; align-items:center; justify-content:center; font-size:13px; }
+        .pline .info { flex:1; min-width:0; }
+        .pline .pname { font-size:16px; overflow-wrap:anywhere; line-height:1.2; }
+        .pline .psub { font-size:12px; color:var(--secondary-text-color); margin-top:2px; }
+        .pline .pq { flex:none; font-size:12px; font-weight:700; padding:1px 8px; border-radius:999px; background:color-mix(in srgb, var(--acc) 45%, transparent); }
+        .pline .x { flex:none; width:30px; height:30px; padding:0; font-size:14px; border-radius:50%; background:transparent; color:var(--secondary-text-color); }
+      </style>
+      <ha-card>
+        <div class="hero">
+          <div><div class="label" id="label"></div><div class="count" id="count"></div></div>
+          <span class="sum" id="sum"></span>
+        </div>
+        <div class="cols">
+          <div class="left">
+            <div class="sel"><div class="cap">Selected</div><div class="val" id="val"></div></div>
+            <div class="qty"><span class="cap">Qty</span><div class="ctl"><button id="qm" aria-label="Fewer">−</button><span class="n" id="qty"></span><button id="qp" aria-label="More">+</button></div></div>
+            <div class="actions"><button class="clr" id="clr">Clear</button><button class="add" id="add">Add</button></div>
+          </div>
+          <div class="right"><div class="rin">
+            <div class="addrow"><input id="new" type="text" placeholder="Add item to list" enterkeyhint="done" autocomplete="off"><button id="newbtn" aria-label="Add item to list">+</button></div>
+            <div class="list" id="list"></div>
+          </div></div>
+        </div>
+        <button class="finish" id="finish">Finish shop</button>
+        <div class="cart" id="cart"></div>
+      </ha-card>`;
+    const $ = (s) => this.shadowRoot.querySelector(s);
+    $("#label").textContent = this._title || "Shopping";
+    $("#qm").addEventListener("click", () => { this._qty = Math.max(1, this._qty - 1); this._renderDisplay(); });
+    $("#qp").addEventListener("click", () => { this._qty = Math.min(99, this._qty + 1); this._renderDisplay(); });
+    $("#add").addEventListener("click", () => this._add());
+    $("#clr").addEventListener("click", () => { this._label = ""; this._qty = 1; this._renderDisplay(); this._renderList(); });
+    $("#newbtn").addEventListener("click", () => this._newItem());
+    $("#new").addEventListener("keydown", (ev) => { if (ev.key === "Enter") this._newItem(); });
+    $("#finish").addEventListener("click", () => this._finish());
+    this._renderDisplay();
+    this._renderList();
+  }
+
+  _renderDisplay() {
+    if (!this.shadowRoot || !this.shadowRoot.querySelector("#val")) return;
+    const $ = (s) => this.shadowRoot.querySelector(s);
+    const v = $("#val");
+    v.textContent = this._label || "Select an item";
+    v.classList.toggle("empty", !this._label);
+    $("#qty").textContent = "×" + this._qty;
+    $("#add").disabled = !this._label;
+  }
+
+  _renderList() {
+    if (!this.shadowRoot || !this.shadowRoot.querySelector("#list")) return;
+    const $ = (s) => this.shadowRoot.querySelector(s);
+    const az = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    const open = this._all.filter((i) => !i.done).sort(az);
+    const cart = this._all.filter((i) => i.done).sort(az);
+    const left = open.reduce((n, i) => n + i.qty, 0);
+    $("#sum").textContent = left;
+    $("#count").textContent = left === 1 ? "item remaining" : "items remaining";
+    $("#finish").disabled = !cart.length;
+    const box = $("#list");
+    box.innerHTML = "";
+    if (!open.length) box.innerHTML = '<div class="muted">' + (cart.length ? "Everything is in the cart" : "Nothing on the list") + "</div>";
+    for (const item of open) box.appendChild(this._openRow(item));
+    this._renderCart(cart);
+  }
+
+  _openRow(item) {
+    const row = document.createElement("div");
+    row.className = "row" + (this._label === item.name ? " on" : "");
+    const nameEl = document.createElement("span");
+    nameEl.className = "name";
+    nameEl.textContent = item.name;
+    const brand = this._brands.get(item.name.toLowerCase());
+    if (brand) {
+      const b = document.createElement("span");
+      b.className = "brand";
+      b.textContent = brand;
+      nameEl.appendChild(b);
+    }
+    row.appendChild(nameEl);
+    if (item.qty > 1) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "×" + item.qty;
+      row.appendChild(badge);
+    }
+    // Tap selects the item; a long press (without moving) asks to remove it from the list.
+    let timer = null, sx = 0, sy = 0, fired = false;
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    row.addEventListener("pointerdown", (e) => {
+      fired = false;
+      sx = e.clientX; sy = e.clientY;
+      cancel();
+      timer = setTimeout(() => { timer = null; fired = true; this._removeItem(item); }, 550);
+    });
+    row.addEventListener("pointermove", (e) => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
+    for (const ev of ["pointerup", "pointercancel", "pointerleave"]) row.addEventListener(ev, cancel);
+    row.addEventListener("contextmenu", (e) => e.preventDefault());
+    row.addEventListener("click", () => {
+      if (fired) { fired = false; return; }
+      if (this._label === item.name) {
+        this._label = "";
+        this._qty = 1;
+      } else {
+        this._label = item.name;
+        this._qty = item.qty;
+      }
+      this._renderDisplay();
+      this._renderList();
+    });
+    return row;
+  }
+
+  // Below the Finish button: everything in the cart.
+  _renderCart(cart) {
+    const box = this.shadowRoot.querySelector("#cart");
+    box.innerHTML = "";
+    if (!cart.length) return;
+    const head = document.createElement("div");
+    head.className = "head";
+    head.innerHTML = "<span>In Cart</span><span>" + cart.length + "</span>";
+    box.appendChild(head);
+    const list = document.createElement("div");
+    list.className = "plist";
+    for (const item of cart) {
+      const line = document.createElement("div");
+      line.className = "pline";
+      const tick = document.createElement("span");
+      tick.className = "tick";
+      tick.textContent = "✓";
+      line.appendChild(tick);
+      const info = document.createElement("div");
+      info.className = "info";
+      const nm = document.createElement("div");
+      nm.className = "pname";
+      nm.textContent = item.name;
+      info.appendChild(nm);
+      const brand = this._brands.get(item.name.toLowerCase());
+      if (brand) {
+        const sub = document.createElement("div");
+        sub.className = "psub";
+        sub.textContent = brand;
+        info.appendChild(sub);
+      }
+      line.appendChild(info);
+      if (item.qty > 1) {
+        const q = document.createElement("span");
+        q.className = "pq";
+        q.textContent = "×" + item.qty;
+        line.appendChild(q);
+      }
+      const x = document.createElement("button");
+      x.className = "x";
+      x.textContent = "✕";
+      x.setAttribute("aria-label", "Put back on the list");
+      x.addEventListener("click", () => this._putBack(item));
+      line.appendChild(x);
+      list.appendChild(line);
+    }
+    box.appendChild(list);
+  }
+}
+
+if (!customElements.get("shoppingmate-shop-card")) customElements.define("shoppingmate-shop-card", ShopTrolleyCard);
+window.customCards = window.customCards || [];
