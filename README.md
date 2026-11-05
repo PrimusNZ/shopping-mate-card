@@ -11,7 +11,7 @@ Two dashboard cards for Home Assistant that turn a to-do list into a proper fami
 
 ## Table of contents
 
-**[`Screenshots`](#screenshots)**  **[`Intended use`](#intended-use)**  **[`Features`](#features)**  **[`Installation`](#installation)**  **[`Setting up`](#setting-up)**  **[`Configuration`](#configuration)**  **[`Catalog format`](#catalog-format)**  **[`Styling`](#styling)**  **[`Notes`](#notes)**  **[`License`](#license)**
+**[`Screenshots`](#screenshots)**  **[`Intended use`](#intended-use)**  **[`Features`](#features)**  **[`Requirements`](#requirements)**  **[`Setting up`](#setting-up)**  **[`Configuration`](#configuration)**  **[`Catalog format`](#catalog-format)**  **[`Styling`](#styling)**  **[`Notes`](#notes)**  **[`License`](#license)**
 
 <br>
 
@@ -87,58 +87,13 @@ Both cards have a visual editor in the dashboard editor.
 
 <br>
 
-## Installation
-
-**Requirements:**
+## Requirements
 
 - Home Assistant with at least one to-do list for the shopping list. The built-in [Local To-do](https://www.home-assistant.io/integrations/local_todo/) integration works well.
 - A second to-do list for the catalog (the ShoppingMate List Card).
 - For the calculator's history: a calendar that can create events, such as [Local Calendar](https://www.home-assistant.io/integrations/local_calendar/), and an `input_number` helper for the spend counter.
 
-<details>
-
-<summary>Without HACS</summary>
-
-<br>
-
-1. Download this file: [shopping-mate-card.js](https://raw.githubusercontent.com/PrimusNZ/shopping-mate-card/devel/shopping-mate-card.js)
-2. Add this file to your `<config>/www/shopping-mate-card` folder.
-3. On your dashboard click on the icon at the right top corner then on `Edit dashboard`
-4. Click again on that icon and then click on `Manage resources`
-5. Click on `Add resource`
-6. Copy and paste this: `/local/shopping-mate-card/shopping-mate-card.js?v=1`
-7. Click on `JavaScript Module` then `Create`
-8. Go back and refresh your page
-9. You can now click on `Add card` in the bottom right corner and search for `ShoppingMate List Card` or `ShoppingMate Calculator`
-10. After any update of the file you will have to edit `/local/shopping-mate-card/shopping-mate-card.js?v=1` and change the version to any higher number
-
-If it's not working, just try to clear your browser cache.
-
-</details>
-
-<details>
-
-<summary>With HACS (Recommended)</summary>
-
-<br>
-
-This method allows you to get updates directly on the Home Assistant Community Store
-
-1. If HACS is not installed yet, download it following the instructions on [https://hacs.xyz/docs/use/download/download/](https://hacs.xyz/docs/use/download/download/)
-2. Proceed to the HACS initial configuration following the instructions on [https://hacs.xyz/docs/configuration/basic](https://hacs.xyz/docs/configuration/basic)
-3. On your sidebar go to "HACS"
-4. Click on the blue button below (or add `https://github.com/PrimusNZ/shopping-mate-card` as a custom repository of type `Dashboard`)
-5. Click on "Download"
-6. Go back on your dashboard and click on the icon at the right top corner then on `Edit dashboard`
-7. You can now click on `Add card` in the bottom right corner and search for `ShoppingMate List Card` or `ShoppingMate Calculator`
-
-If it's not working, try to clear your browser/app cache (on all your devices if needed).
-
-</details>
-
-<br>
-
-[![Open ShoppingMate Card on Home Assistant Community Store (HACS).](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=PrimusNZ&repository=shopping-mate-card&category=frontend)
+Install **ShoppingMate Card** from the **Marketplace** in Home Assistant (it is listed as a Dashboard card). There is nothing to download or add by hand. Once it is installed, add the cards to a dashboard as described below.
 
 <br>
 
@@ -172,6 +127,15 @@ spend_entity: input_number.shop_spend_total
 currency: "$"
 ```
 
+To use the same card without the calculator, add `calculator: false`:
+
+```yaml
+type: custom:shoppingmate-calc-card
+calculator: false
+entity: todo.shopping_list
+title: Shopping
+```
+
 The calculator is best on its own phone view (a panel view works well) so it can fill the screen. The list card fills the height of its container, so give it a panel view or a full-height section as well. On the kiosk, put the list card in its own page.
 
 **Optional: a notification when you finish.** The calculator saves the shop one minute in the future and bumps the spend counter. An automation that triggers when `input_number.shop_spend_total` goes up can read the newest event from `calendar.shop_history` and send you the receipt, for example to a phone or a family chat.
@@ -196,7 +160,9 @@ The calculator is best on its own phone view (a panel view works well) so it can
 | --- | --- | --- | --- | --- |
 | `type` | string | **Required** | | `custom:shoppingmate-calc-card` |
 | `entity` | string | Optional | `todo.shopping_list` | The to-do list that holds the shopping list. |
-| `catalog_entity` | string | Optional | `todo.shop_catalog` | The catalog whose saved prices are pre-filled when you pick an item. |
+| `calculator` | boolean | Optional | `true` | Set to `false` to turn the calculator off. You still get the item list, the add-item field and the quantity stepper: select an item, change the quantity if it differs, press Add to put it in the cart, and Finish shop clears the cart from the list. There is no keypad, no prices, no total and no history entry. |
+| `title` | string | Optional | `Shopping` | Heading in the header when `calculator` is `false`. |
+| `catalog_entity` | string | Optional | `todo.shop_catalog` | The catalog whose saved prices are pre-filled when you pick an item, and whose brands are shown. |
 | `update_catalog_prices` | boolean | Optional | `false` | When `true`, Finish shop saves the last price paid for each item back to its catalog entry (size, brand and UPC are kept). Items not in the catalog are skipped. |
 | `calendar_entity` | string | Optional | `calendar.shop_history` | Calendar that receives one event per finished shop. |
 | `spend_entity` | string | Optional | `input_number.shop_spend_total` | Number helper that the shop total is added to. |
