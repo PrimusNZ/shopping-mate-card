@@ -24,8 +24,8 @@
  *
  * Layout: two panes side by side (list left, catalog right). When the card is
  * narrower than 700px (a phone) it switches to one pane at a time with two tabs on
- * top: "Shopping list (n)" and "Add items". The card sizes itself to the
- * screen height.
+ * top: "Shopping list (n)" and "Add items". Outside the kiosk, where the kiosk
+ * viewport height variable does not exist, the card sizes itself to the screen.
  *
  *  Left : the shopping list (todo.shopping_list). Tap a row to tick it off, − / +
  *         change the quantity, ✕ removes it. "Clear done" removes ticked rows.
@@ -75,7 +75,8 @@
  *
  * Shopping list rows are stored as "Name" or "Name (3)" (quantity in brackets);
  * an old "@Category@ " prefix from the previous card is ignored.
- * Styled with the Home Assistant theme colours.
+ * Styled with the kiosk tokens (--kiosk-surface, --kiosk-surface-edge,
+ * --kiosk-accent, --kiosk-text-*) and falls back to HA theme colours elsewhere.
  * Config: type: custom:shoppingmate-list-card
  *   entity: todo.shopping_list
  *   catalog_entity: todo.shop_catalog
@@ -317,7 +318,7 @@ class ShopListCard extends HTMLElement {
   _render() {
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display:block; height:calc(100vh - 120px); min-height:360px; position:relative; --acc:var(--primary-color); --txt:var(--primary-text-color); --txt2:var(--secondary-text-color); --surf:var(--secondary-background-color); --edge:0 0 0 1px var(--divider-color); --bg:var(--card-background-color); }
+        :host { display:block; height:var(--kiosk-viewport-content-height, calc(100vh - 120px)); min-height:360px; position:relative; --acc:var(--kiosk-accent, var(--primary-color)); --txt:var(--kiosk-text-primary, var(--primary-text-color)); --txt2:var(--kiosk-text-secondary, var(--secondary-text-color)); --surf:var(--kiosk-surface, var(--secondary-background-color)); --edge:var(--kiosk-surface-edge, 0 0 0 1px var(--divider-color)); --bg:var(--kiosk-background, var(--card-background-color)); }
         * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
         .wrap { height:100%; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:12px; padding:0; color:var(--txt); font-size:20px; }
         .pane { min-width:0; min-height:0; display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:12px; background:var(--surf); box-shadow:var(--edge); }

@@ -214,7 +214,18 @@ Gas & Fire: 9KG Gas Bottle
 
 ## Styling
 
-The cards use your Home Assistant theme: `--secondary-background-color` for surfaces, `--primary-color` for accents and `--primary-text-color` / `--secondary-text-color` for text. The ShoppingMate List Card is as tall as the screen minus 120px (minimum 360px).
+The cards use your Home Assistant theme: `--secondary-background-color` for surfaces, `--primary-color` for accents and `--primary-text-color` / `--secondary-text-color` for text. The ShoppingMate List Card also reads these optional variables, which you can set with [card-mod](https://github.com/thomasloven/lovelace-card-mod) or a theme:
+
+| Variable | Used for |
+| --- | --- |
+| `--kiosk-surface` | Panels, rows and buttons |
+| `--kiosk-surface-edge` | Their outline or box-shadow |
+| `--kiosk-accent` | Highlights, quantity badges, the selected tab |
+| `--kiosk-text-primary` / `--kiosk-text-secondary` | Text |
+| `--kiosk-background` | Dialog background |
+| `--kiosk-viewport-content-height` | Card height (default: the screen height minus 120px, minimum 360px) |
+
+The variable names come from the Kiosk dashboard these cards were first built for.
 
 <br>
 
